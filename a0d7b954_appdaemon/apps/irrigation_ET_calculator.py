@@ -39,8 +39,8 @@ class ET_Calculation(hass.Hass):
         self.set_value("input_number.daily_et", self.ET)       
         self.run_time = self.Calculate_run_time(self.ET,self.area,self.sprinkler_number,self.sprinkler_half_circle_rate,self.max_run_time)
         self.log(f"run time is: {self.run_time/60} mins")
-        self.set_value("input_number.lawn_watering_time", int(self.run_time)) 
-        if self.PASS == 2: self.run_in(self.main_routine, 1800)  # #0 mins
+        self.set_value("input_number.lawn_watering_time", int(self.run_time))         
+        if self.PASS >= 2: self.run_in(self.main_routine, 1200)  # 20 mins
 
     # METHODS.
   
@@ -131,12 +131,13 @@ class ET_Calculation(hass.Hass):
             self.ET = self.eto1['ETo_FAO_interp_mm'].sum()
             self.log("ET sucessfully calculated")
 
-            if self.debug_extra:self.log(self.eto1)      
+            if self.debug_extra:self.log(self.eto1)
 
-        except Exception as exc:             
-            self.ET = 2 
+            self.PASS = 0 # turn off exception processing      
+
+        except Exception as exc:  
             self.PASS = self.PASS + 1 
-            self.log(f"Insufficient data i.e. {exc}, setting ET to 2, Pass number: {self.PASS}")              
+            self.log(f"Insufficient data i.e. exception is {exc}, Pass number: {self.PASS}")              
         finally:
             return self.ET, self.PASS
 

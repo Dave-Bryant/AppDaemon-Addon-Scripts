@@ -67,10 +67,10 @@ irrigation1:
   STATION_5: 'noswitch5'
   STATION_6: 'noswitch6'
   STATION_7: 'switch.irrigation_switch_2_l2'
-  STATION_1_WEIGHT: 0.6   #  theoretically  .25
-  STATION_2_WEIGHT: 0.9 # theoretically  .3
-  STATION_3_WEIGHT: 0.75  # theoretically  .2
-  STATION_4_WEIGHT: 0.5  # theoretically  .25
+  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
+  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
+  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
+  STATION_4_WEIGHT: 0.5  # reduced because in the shade
   STATION_5_WEIGHT: 0.33
   STATION_6_WEIGHT: 0.4
   STATION_7_WEIGHT: 0.1  # not used at all
@@ -102,10 +102,10 @@ irrigation2:
   STATION_5: 'noswitch5'
   STATION_6: 'noswitch6'
   STATION_7: 'switch.irrigation_switch_2_l2'
-  STATION_1_WEIGHT: 0.6   #  theoretically  .25
-  STATION_2_WEIGHT: 0.9 # theoretically  .3
-  STATION_3_WEIGHT: 0.75  # theoretically  .2
-  STATION_4_WEIGHT: 0.5  # theoretically  .25
+  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
+  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
+  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
+  STATION_4_WEIGHT: 0.5  # reduced because in the shade
   STATION_5_WEIGHT: 0.33
   STATION_6_WEIGHT: 0.4
   STATION_7_WEIGHT: 0.1  # not used
@@ -137,10 +137,10 @@ irrigation3:
   STATION_5: 'noswitch5'
   STATION_6: 'noswitch6'
   STATION_7: 'switch.irrigation_switch_2_l2'
-  STATION_1_WEIGHT: 0.6   #  theoretically  .25
-  STATION_2_WEIGHT: 0.9 # theoretically  .3
-  STATION_3_WEIGHT: 0.75  # theoretically  .2
-  STATION_4_WEIGHT: 0.5  # theoretically  .25
+  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
+  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
+  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
+  STATION_4_WEIGHT: 0.5  # reduced because in the shade
   STATION_5_WEIGHT: 0.33
   STATION_6_WEIGHT: 0.4
   STATION_7_WEIGHT: 0.1  # not used
@@ -204,11 +204,11 @@ irrigation_ET_calculator:              # Calculates ET & Run time daily
   class: ET_Calculation
   EVAPOTRANSPIRATION: "input_number.daily_et"
   IRRIGATIONRUNTIME: "input_number.lawn_watering_time" 
-  ETCALCSTARTTIME: '22:45:00'
+  ETCALCSTARTTIME: '22:15:00'
   AREA:  328  #m2
   SPRINKLERNUMBER: 20
   SPRINKLERHALFCIRCLERATE:  .14 #m3/h   converted from 1.5 G/min
-  SPRINKLERMAXRUNTIME: 1800 # secs
+  SPRINKLERMAXRUNTIME: 1800 # secs i.e. 30 mins
          
 
 light_timer1:
