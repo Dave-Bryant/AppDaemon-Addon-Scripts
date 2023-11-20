@@ -1,0 +1,23 @@
+# Example .gitignore file for your addon dir.
+# An * ensures that everything will be ignored.
+*
+# You can whitelist files/folders with !, these will not be ignored.
+!*.yaml
+!.gitignore
+!*.md
+!*.py
+!*/*.yaml
+!*/*.py
+!a0d7b954_appdaemon
+!a0d7b954_appdaemon/apps
+!a0d7b954_node-red
+
+
+# Ignore folders.
+.storage
+.cloud
+
+# Ensure these YAML files are ignored, otherwise your secret data/credentials will leak.
+ip_bans.yaml
+secrets.yaml
+known_devices.yaml
