@@ -60,7 +60,7 @@ class Home_Irrigation(hass.Hass):
             # self.hourly_adjusted_running_time =  0.0
             self.log("WU API is down, set variables to zero and 100 to ensure Irrigation not needed")
          else:
-            self.running_time = float(self.get_state('input_number.lawn_watering_time'))
+            self.running_time = float(self.get_state('input_number.lawn_watering_time'))*60
             # set up all the variables
             self.chance_of_precipitation = float(self.get_state('sensor.precip_chance_today'))
             self.chance_of_precipitation_48hrs = float(self.get_state('sensor.precip_chance_tomorrow'))
@@ -91,7 +91,7 @@ class Home_Irrigation(hass.Hass):
 
              # allocate run time across schedules
              self.running_time = self.running_time / self.no_of_schedules
-             self.garden_running_time = float(self.get_state('input_number.garden_watering_time'))
+             self.garden_running_time = float(self.get_state('input_number.garden_watering_time'))*60
 
              # If Garden Run then set garden run time, else store run time for gardens
              if self.garden_run:
@@ -102,9 +102,11 @@ class Home_Irrigation(hass.Hass):
                  self.set_value("input_number.garden_watering_time", 0)
                  self.log(f"Reset Cumulative Garden Run Time to zero")
              else:
-                 self.cumulative_total = round(self.running_time + float(self.get_state('input_number.garden_watering_time')),0)
-                 self.set_value("input_number.garden_watering_time",self.cumulative_total) # store persistently
-                 self.log(f"Cumulative Garden Run Time: {self.cumulative_total}secs")
+                 self.garden_watering_time_secs = float(self.get_state('input_number.garden_watering_time'))*60
+                 self.cumulative_total = round(self.running_time + self.garden_watering_time_secs,0)
+                 self.cumulative_total_mins = self.cumulative_total / 60
+                 self.set_value("input_number.garden_watering_time",self.cumulative_total_mins) # store persistently
+                 self.log(f"Cumulative Garden Run Time: {self.cumulative_total_mins} mins")
 
 
              self.log(f"Starting Irrigation. ")

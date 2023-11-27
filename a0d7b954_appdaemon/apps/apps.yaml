@@ -192,23 +192,21 @@ irrigation_rain_monitor:              # Resets cumulative garden run time if rai
   class: Home_Irrigation_rain_monitor
   PRECIPITATION_THRESHOLD: 2.0   # mm
 
-# irrigation_force:              # Resets daily run time at a certain time (once) if today has been disrupted
-#   module: irrigation_force_code
-#   class: Home_Irrigation_Force
-#   NO_OF_DAYS: 2
-#   FACTOR: 1.2
-#   MONTHS_ACTIVE : "Jan,Feb,Oct,Nov,Dec"
-
 irrigation_ET_calculator:              # Calculates ET & Run time daily
   module: irrigation_ET_calculator
   class: ET_Calculation
   EVAPOTRANSPIRATION: "input_number.daily_et"
+  EVAPOTRANSPIRATIONCALC: "input_number.daily_calc_et"
+  DAILYRAINEVENT: "input_number.daily_rain_event"
   IRRIGATIONRUNTIME: "input_number.lawn_watering_time" 
   ETCALCSTARTTIME: '22:15:00'
+  MAXBUCKETSIZE : 6 # in mm
   AREA:  328  #m2
   SPRINKLERNUMBER: 20
   SPRINKLERHALFCIRCLERATE:  .14 #m3/h   converted from 1.5 G/min
   SPRINKLERMAXRUNTIME: 1800 # secs i.e. 30 mins
+  DAILYRAIN: "sensor.dailyrain"
+  EVENTRAIN: "sensor.eventrain"
          
 
 light_timer1:
