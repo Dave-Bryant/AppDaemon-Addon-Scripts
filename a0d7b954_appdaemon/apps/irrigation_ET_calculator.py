@@ -168,7 +168,7 @@ class ET_Calculation(hass.Hass):
             self.eto1 = self.et1.eto_fao(interp='linear',maxgap=6)
             self.ET_calc = self.eto1['ETo_FAO_interp_mm'].sum()
             self.set_value("input_number.daily_calc_et", self.ET_calc)
-            self.log(f"ET sucessfully calculated {self.ET_calc}")
+            self.log(f"ET sucessfully calculated {self.ET_calc:0.2f}")
 
             if self.debug_extra:self.log(self.eto1)
 
