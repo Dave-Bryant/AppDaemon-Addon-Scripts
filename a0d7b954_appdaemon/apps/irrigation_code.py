@@ -13,6 +13,7 @@ class Home_Irrigation(hass.Hass):
      self.precipitation_threshold = self.args["PRECIPITATION_THRESHOLD"] # the rain chance probability after which irrigating will occur
      self.precipitation_threshold_48 = self.args["PRECIPITATION_THRESHOLD_48"]
      self.watering_threshold = self.args["WATERING_THRESHOLD"]  # the daily watering point where irrigating will occur
+     self.soil_moisture_min = self.args["SOILMOISTUREMIN"]
      #self.reset_bucket = self.args["RESET_BUCKET"]  # signals to an irrigation instance to reset the bucket
      self.garden_run = self.args["GARDEN_RUN"] # signals to an irrigation instance to reset the garde watering cumulative total as this instance will water the garden
      self.no_of_schedules = self.args["NO_OF_SCHEDULES"]
@@ -65,7 +66,14 @@ class Home_Irrigation(hass.Hass):
             self.chance_of_precipitation = float(self.get_state('sensor.precip_chance_today'))
             self.chance_of_precipitation_48hrs = float(self.get_state('sensor.precip_chance_tomorrow'))
             self.precipitation = float(self.get_state('sensor.dailyrain'))
-            # self.hourly_adjusted_running_time =  float(self.get_state('sensor.smart_irrigation_hourly_netto_precipitation'))
+
+        # Read Soil Moisture
+         self.soil_moisture = 40
+         # if self.get_state('sensor.soil_sensor_1_battery') > 20:
+         #        self.soil_moisture = float(self.get_state('sensor.soil_sensor_1_soil_moisture'))
+         # else:
+         #        self.soil_moisture = 30  # set it to be ignored
+         #        self.log("Soil Moisture Batteries are low")
 
          # Find first switch then remove master valve times from all other switches
          for i in self.stations:
@@ -77,7 +85,7 @@ class Home_Irrigation(hass.Hass):
                 self.stations[i]['self.window_start'] = int(self.stations[i]['self.window_start']) - int(self.master_valve_lead_time)
 
          # print report to log
-         self.log(f"Daily is: {self.running_time} seconds. Probability of Rain: {self.chance_of_precipitation}%. Probability of Rain 24hrs: {self.chance_of_precipitation_48hrs}%. Watering Threshold: {self.watering_threshold}sec. Precipitation: {self.precipitation}mm. Garden Watering time: {self.get_state('input_number.garden_watering_time')} sec.")
+         self.log(f"Daily is: {self.running_time} seconds. Probability of Rain: {self.chance_of_precipitation}%. Probability of Rain 24hrs: {self.chance_of_precipitation_48hrs}%. Watering Threshold: {self.watering_threshold}sec. Precipitation: {self.precipitation}mm. Soil Moisture: {self.soil_moisture}%  Garden Watering time: {self.get_state('input_number.garden_watering_time')} sec.")
 
          # conditions to proceed
          if self.running_time <= self.watering_threshold: self.select_option("input_select.irrigation_status", "Irrigation run time too small")
@@ -86,8 +94,9 @@ class Home_Irrigation(hass.Hass):
          if self.chance_of_precipitation > self.precipitation_threshold: self.select_option("input_select.irrigation_status", "Rain is coming")
          if self.chance_of_precipitation_48hrs > self.precipitation_threshold_48: self.select_option("input_select.irrigation_status", "Rain is coming")
          if self.precipitation != 0: self.select_option("input_select.irrigation_status", "It has rained")
+         if self.soil_moisture > self.soil_moisture_min: self.select_option("input_select.irrigation_status", "Soil Moisture too high")
 
-         if self.running_time > self.watering_threshold and self.chance_of_precipitation <= self.precipitation_threshold and self.chance_of_precipitation_48hrs <= self.precipitation_threshold_48 and self.precipitation == 0:
+         if self.running_time > self.watering_threshold and self.chance_of_precipitation <= self.precipitation_threshold and self.chance_of_precipitation_48hrs <= self.precipitation_threshold_48 and self.precipitation == 0 and self.soil_moisture <= self.soil_moisture_min:
 
              # allocate run time across schedules
              self.running_time = self.running_time / self.no_of_schedules

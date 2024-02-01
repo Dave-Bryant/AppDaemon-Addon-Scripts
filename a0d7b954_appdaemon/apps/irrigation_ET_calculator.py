@@ -12,12 +12,18 @@ class ET_Calculation(hass.Hass):
         self.debug = False
         self.debug_extra = False
         self.run_without_update = False   ###### FOR TESTING
-
+        
         self.ET = float(self.get_state(self.args["EVAPOTRANSPIRATION"] ))    # lovelace fields
         self.ET_calc = float(self.get_state(self.args["EVAPOTRANSPIRATIONCALC"]))
-        self.rain_tracked = float(self.get_state(self.args["DAILYRAINEVENT"]))  #  Reused    
         self.run_time = float(self.get_state(self.args["IRRIGATIONRUNTIME"]))*60 # convert to seconds
-            
+        try:            
+            self.rain_tracked = float(self.get_state(self.args["DAILYRAINEVENT"]))  #  Reused             
+        except Exception as exc:  
+            self.rain_tracked = 0
+            self.log(f"Exception is {exc}, Daily rain Event set to 0")              
+        finally:            
+            pass
+
         self.z_msl = 430 # elevation these are for ETo
         self.lat = -35.282001
         self.lon = 149.128998
@@ -29,8 +35,23 @@ class ET_Calculation(hass.Hass):
         self.sprinkler_number = self.args["SPRINKLERNUMBER"]
         self.sprinkler_half_circle_rate = self.args["SPRINKLERHALFCIRCLERATE"]
         self.max_run_time = self.args["SPRINKLERMAXRUNTIME"]
-        self.daily_rain = float(self.get_state(self.args["DAILYRAIN"]))  # Sensors
-        self.event_rain = float(self.get_state(self.args["EVENTRAIN"]))
+
+        try:            
+            self.daily_rain = float(self.get_state(self.args["DAILYRAIN"]))  # Sensors             
+        except Exception as exc:  
+            self.daily_rain = 0
+            self.log(f"Exception is {exc}, Daily rain set to 0")              
+        finally:            
+            pass
+
+        try:            
+            self.event_rain = float(self.get_state(self.args["EVENTRAIN"]))  # Sensors             
+        except Exception as exc:  
+            self.event_rain = 0
+            self.log(f"Exception is {exc}, Event rain set to 0")              
+        finally:            
+            pass
+        
 
         self.max_bucket_size = self.args["MAXBUCKETSIZE"]
 
@@ -38,7 +59,7 @@ class ET_Calculation(hass.Hass):
 
         if not self.run_without_update:self.run_daily(self.main_routine, self.start_time)  
         if self.run_without_update: self.run_in(self.main_routine, 0)
-        
+        #self.run_in(self.main_routine, 0)
     def main_routine(self, *args):  
         
         self.PASS = self.PASS + 1 
@@ -168,7 +189,7 @@ class ET_Calculation(hass.Hass):
             self.eto1 = self.et1.eto_fao(interp='linear',maxgap=6)
             self.ET_calc = self.eto1['ETo_FAO_interp_mm'].sum()
             self.set_value("input_number.daily_calc_et", self.ET_calc)
-            self.log(f"ET sucessfully calculated {self.ET_calc:0.2f}")
+            self.log(f"ET sucessfully calculated as {self.ET_calc:0.2f}")
 
             if self.debug_extra:self.log(self.eto1)
 
@@ -198,20 +219,21 @@ class ET_Calculation(hass.Hass):
             return self.ET, self.PASS
         
     def Apply_rain_to_ET(self,apply_rain,ET_calc,ET,max_bucket_size): 
-        if apply_rain > max_bucket_size: 
+        if apply_rain > max_bucket_size:                      
+                     self.log(f'Rain bucket set from {apply_rain:0.2f} to maximum {max_bucket_size:0.2f} mm') 
                      apply_rain = max_bucket_size
-                     self.log(f'Rain bucket set to maximum {apply_rain:0.2f} mm') 
                 
         if apply_rain >= ET_calc: 
                 ET =  0   # rain not needed
                 self.log(f'ET set to 0 as Rain bucket {apply_rain:0.2f} exceeds (or equals) ET_calc {ET_calc:0.2f}') 
                 apply_rain = apply_rain - ET_calc
                 self.log(f'Rain bucket decreased by ET_calc and set to {apply_rain:0.2f} mm')  
-        else:                     
-                ET = ET_calc - apply_rain 
-                self.log(f'New ET {ET:0.2f} after ET_calc {ET_calc:0.2f} reduced by Rain bucket {apply_rain:0.2f} amount')            
+        else:   
+                ET = ET_calc - apply_rain
+                self.log(f'New ET {ET:0.2f} after ET_calc {ET_calc:0.2f} reduced by Rain bucket {(ET_calc-ET):0.2f} amount') 
+                #apply_rain = 0
         
-        if not self.run_without_update: self.set_value("input_number.daily_rain_event", apply_rain) 
+        if not self.run_without_update: self.set_value("input_number.daily_rain_event", round(apply_rain, 2)) 
         return ET
 
     def Calculate_run_time(self,*kwarg):

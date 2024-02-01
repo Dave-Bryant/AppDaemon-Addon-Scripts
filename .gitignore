@@ -17,6 +17,7 @@
 .storage
 .cloud
 .venv
+a0d7b954_node-red/node_modules
 
 # Ensure these YAML files are ignored, otherwise your secret data/credentials will leak.
 ip_bans.yaml

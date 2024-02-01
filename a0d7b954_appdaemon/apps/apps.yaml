@@ -12,10 +12,10 @@ mercedes_tyre_check:
   ODOMETER: "sensor.ayaf94h_odometer"
   tyre_check_switch : "input_boolean.check_odometer"
 
-canberra_dams:
-  module: canberradams
-  class: Get_ACT_Dams
-  DAM_FLAG: 'input_boolean.check_dams'
+# canberra_dams:
+#   module: canberradams
+#   class: Get_ACT_Dams
+#   DAM_FLAG: 'input_boolean.check_dams'
 
 act_garbage:
   module: act_garbage
@@ -50,12 +50,13 @@ internet_health_monitor:
 irrigation1:
   module: irrigation_code
   class: Home_Irrigation
-  START_TIME: '01:00:00'
+  START_TIME: '21:00:00'
   START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
   PRECIPITATION_THRESHOLD: 80
   PRECIPITATION_THRESHOLD_48: 90
   WATERING_THRESHOLD: 360
-  NO_OF_SCHEDULES: 3
+  NO_OF_SCHEDULES: 4
+  SOILMOISTUREMIN: 70
   RESET_BUCKET: False
   GARDEN_RUN: False
   MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
@@ -85,12 +86,13 @@ irrigation1:
 irrigation2:
   module: irrigation_code
   class: Home_Irrigation
-  START_TIME: '05:00:00'
+  START_TIME: '23:00:00'
   START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
   PRECIPITATION_THRESHOLD: 80
   PRECIPITATION_THRESHOLD_48: 90
   WATERING_THRESHOLD: 360
-  NO_OF_SCHEDULES: 3
+  NO_OF_SCHEDULES: 4
+  SOILMOISTUREMIN: 70
   RESET_BUCKET: False
   GARDEN_RUN: False
   MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
@@ -120,12 +122,13 @@ irrigation2:
 irrigation3:
   module: irrigation_code
   class: Home_Irrigation
-  START_TIME: '21:00:00' 
+  START_TIME: '02:00:00' 
   START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
   PRECIPITATION_THRESHOLD: 80
   PRECIPITATION_THRESHOLD_48: 90
   WATERING_THRESHOLD: 360
-  NO_OF_SCHEDULES: 3
+  NO_OF_SCHEDULES: 4
+  SOILMOISTUREMIN: 70
   RESET_BUCKET: True
   GARDEN_RUN: False
   MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
@@ -152,7 +155,43 @@ irrigation3:
   STATION_6_WINDOW: 3600 # 60 mins for the window
   STATION_7_WINDOW: 900 # 15 mins for the window
 
-irrigation4:              # Gardens
+irrigation4:
+  module: irrigation_code
+  class: Home_Irrigation
+  START_TIME: '05:00:00' 
+  START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
+  PRECIPITATION_THRESHOLD: 80
+  PRECIPITATION_THRESHOLD_48: 90
+  WATERING_THRESHOLD: 360
+  NO_OF_SCHEDULES: 4
+  SOILMOISTUREMIN: 70
+  RESET_BUCKET: True
+  GARDEN_RUN: False
+  MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
+  VALVE_LEAD_TIME: 25
+  STATION_1: 'switch.irrigation_switch_1_l3'  #Front Lawn West Irrigation
+  STATION_2: 'switch.irrigation_switch_1_l2'  #Front Lawn East Irrigation
+  STATION_3: 'switch.irrigation_switch_1_l1'  #Back Lawn South Irrigation
+  STATION_4: 'switch.irrigation_switch_1_l4'  #Back Lawn North Irrigation
+  STATION_5: 'noswitch5'
+  STATION_6: 'noswitch6'
+  STATION_7: 'switch.irrigation_switch_2_l2'
+  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
+  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
+  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
+  STATION_4_WEIGHT: 0.5  # reduced because in the shade
+  STATION_5_WEIGHT: 0.33
+  STATION_6_WEIGHT: 0.4
+  STATION_7_WEIGHT: 0.1  # not used
+  STATION_1_WINDOW: 900 # 15 mins for the window
+  STATION_2_WINDOW: 900 # 15 mins for the window
+  STATION_3_WINDOW: 1200 # 20 mins for the window
+  STATION_4_WINDOW: 1200 # 20 mins for the window
+  STATION_5_WINDOW: 1800 # 30 mins for the window
+  STATION_6_WINDOW: 3600 # 60 mins for the window
+  STATION_7_WINDOW: 900 # 15 mins for the window
+
+irrigationG:              # Gardens
   module: irrigation_code
   class: Home_Irrigation
   START_TIME: '19:00:00'  # was 19:00
@@ -161,6 +200,7 @@ irrigation4:              # Gardens
   PRECIPITATION_THRESHOLD_48: 90
   WATERING_THRESHOLD: 360
   NO_OF_SCHEDULES: 1
+  SOILMOISTUREMIN: 75
   RESET_BUCKET: False
   GARDEN_RUN: True
   MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
@@ -192,7 +232,7 @@ irrigation_rain_monitor:              # Resets cumulative garden run time if rai
   class: Home_Irrigation_rain_monitor
   PRECIPITATION_THRESHOLD: 2.0   # mm
 
-irrigation_ET_calculator:              # Calculates ET & Run time daily
+irrigation_ET_calculator:              # Calculates ET & Run time daily howzat   
   module: irrigation_ET_calculator
   class: ET_Calculation
   EVAPOTRANSPIRATION: "input_number.daily_et"
@@ -200,11 +240,11 @@ irrigation_ET_calculator:              # Calculates ET & Run time daily
   DAILYRAINEVENT: "input_number.daily_rain_event"
   IRRIGATIONRUNTIME: "input_number.lawn_watering_time" 
   ETCALCSTARTTIME: '22:15:00'
-  MAXBUCKETSIZE : 6 # in mm
+  MAXBUCKETSIZE : 6 # mm
   AREA:  328  #m2
   SPRINKLERNUMBER: 20
-  SPRINKLERHALFCIRCLERATE:  .14 #m3/h   converted from 1.5 G/min
-  SPRINKLERMAXRUNTIME: 1800 # secs i.e. 30 mins
+  SPRINKLERHALFCIRCLERATE: 0.1827529 #m3/h   Hunter PS Ultra 10A 120degrees .67 GPM x .27276552 G/min
+  SPRINKLERMAXRUNTIME: 2400 # secs i.e. 40 mins
   DAILYRAIN: "sensor.dailyrain"
   EVENTRAIN: "sensor.eventrain"
          
@@ -230,13 +270,13 @@ home_presence_app:
   plugin:
     - HASS
     - MQTT
-  monitor_topic: monitor
+  # monitor_topic: presence
   # mqtt_event: mqtt
-  # user_device_domain: "device_tracker"
+  # user_device_domain: device_tracker
   # everyone_not_home: everyone_not_home
   # everyone_home: everyone_home
   # somebody_is_home: somebody_is_home
-  depart_check_time: 30
+  depart_check_time: 90
   depart_scans: 3
   minimum_confidence: 60
   not_home_timeout: 15
@@ -247,7 +287,8 @@ home_presence_app:
     - binary_sensor.motion_sensor_3_garage_occupancy
 
   log_level: INFO
-  # reboot the all nodes at 12 midnight
+
+  #reboot nodes at 12 midnight
   # scheduled_restart:
   #   time: '00:00:09'
   #   days:
@@ -258,30 +299,44 @@ home_presence_app:
   #     - fri
   #     - sat
   #     - sun
-  #   location: all
+  #   location: 
+  #     - upstairs
 
-  # other location configuration options
-    #location: living_room, kitchen
-
+  # other location configuration options.
+    
   location:
     - ground_floor
+    # - upstairs
+    - roof
 
   home_motion_sensors: None
 
   known_devices:
-    - '28:EA:2D:C2:F8:0F davidbluetooth'
-    - 'D8:1C:79:B4:C1:E3 wendybluetooth'
+    - 28:EA:2D:C2:F8:0F davidbluetooth
+    - D8:1C:79:B4:C1:E3 wendybluetooth
 
   known_beacons:
-    - '28:EA:2D:C2:F8:0F davidbluebeacon'
-    - 'D8:1C:79:B4:C1:E3 wendybluebeacon'
+    - 28:EA:2D:C2:F8:0F davidbluebeacon
+    - D8:1C:79:B4:C1:E3 wendybluebeacon
 
-  # remote_monitors:
-  #   disable: True   # not used
-  #   ground_floor:
-  #     host: 10.0.0.109
-  #     username:  !secret ground_floor_monitor_username
-  #     password:  !secret ground_floor_monitor_password
-  #     reboot_command: sudo reboot
-  #     auto_reboot_when_offline: True
-  #     time: '01:00:00'  
+  remote_monitors:
+    disable: False 
+    ground_floor:
+      host: 10.0.0.38
+      auto_reboot_when_offline: True
+      username:  !secret ground_floor_monitor_username
+      password:  !secret ground_floor_monitor_password
+
+    roof:
+      host: 10.0.0.14
+      username:  !secret roof_monitor_username
+      password:  !secret roof_monitor_password      
+      auto_reboot_when_offline: True      
+
+    # upstairs:
+    #   host: 10.0.0.11
+    #   username:  !secret upstairs_monitor_username
+    #   password:  !secret upstairs_monitor_password
+    #   reboot_command: sudo reboot
+    #   auto_reboot_when_offline: False
+    #   time: '11:43:00'  

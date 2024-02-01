@@ -9,18 +9,20 @@ appdaemon:
   time_zone: Australia/Sydney  
   plugins:
     HASS:
-      type: hass
-      # appdaemon_startup_conditions:
-      #    delay: 90 # to allow home status to be registered for lights
+      type: hass    
     MQTT:
        type: mqtt
        namespace: mqtt
        client_host: 10.0.0.55
        client_user: AppDaemon_Monitor
        client_password: david230355
+       client_topics:
+           - NONE     #this is new 
 http:
   url: http://125.0.0.1:5050
 admin:
 api:
 hadashboard:
-#secrets: /config/secrets.yaml
+# secrets: /addon_configs/a0d7b954_appdaemon/secrets.yaml
+secrets: /homeassistant/secrets.yaml
+

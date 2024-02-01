@@ -30,6 +30,10 @@ import pandas as pd
 class HelloWorld(hass.Hass):
   def initialize(self):
      self.log("Hello from AppDaemon")
+    #  ET= 4.5
+    #  ET_calc= 4.25
+    #  apply_rain= 0.5
+    #  self.log(f'New ET {ET:0.2f} after ET_calc {ET_calc:0.2f} reduced by Rain bucket {(ET-ET_calc):0.2f} amount')
      #self.log(self.list_services(namespace="default"))
      #self.irrigation_entity = self.get_entity("sensor.smart_irrigation_garden")
      #self.irrigation_entity.call_service("smart_irrigation/reset_bucket")
