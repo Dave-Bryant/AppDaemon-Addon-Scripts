@@ -11,7 +11,7 @@ class ET_Calculation(hass.Hass):
         self.log("Start ET Calculation")
         self.debug = False
         self.debug_extra = False
-        self.run_without_update = False   ###### FOR TESTING
+        self.run_without_update = False   ###### FOR TESTING        
         
         self.ET = float(self.get_state(self.args["EVAPOTRANSPIRATION"] ))    # lovelace fields
         self.ET_calc = float(self.get_state(self.args["EVAPOTRANSPIRATIONCALC"]))

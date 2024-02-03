@@ -68,12 +68,12 @@ class Home_Irrigation(hass.Hass):
             self.precipitation = float(self.get_state('sensor.dailyrain'))
 
         # Read Soil Moisture
-         self.soil_moisture = 40
-         # if self.get_state('sensor.soil_sensor_1_battery') > 20:
-         #        self.soil_moisture = float(self.get_state('sensor.soil_sensor_1_soil_moisture'))
-         # else:
-         #        self.soil_moisture = 30  # set it to be ignored
-         #        self.log("Soil Moisture Batteries are low")
+         try:
+            self.soil_moisture = float(self.get_state('sensor.soil_sensor_1_soil_moisture'))
+         except:
+            self.soil_moisture = 30  # set it to be ignored
+            self.log("Soil Moisture Batteries are low or flat")
+            self.call_service("notify/mobile_app_david_bryants_iphone",message = 'Soil Moisture Batteries are low') 
 
          # Find first switch then remove master valve times from all other switches
          for i in self.stations:
@@ -112,8 +112,8 @@ class Home_Irrigation(hass.Hass):
                  self.log(f"Reset Cumulative Garden Run Time to zero")
              else:
                  self.garden_watering_time_secs = float(self.get_state('input_number.garden_watering_time'))*60
-                 self.cumulative_total = round(self.running_time + self.garden_watering_time_secs,0)
-                 self.cumulative_total_mins = self.cumulative_total / 60
+                 self.cumulative_total = int(self.running_time + self.garden_watering_time_secs)
+                 self.cumulative_total_mins = int(self.cumulative_total / 60)
                  self.set_value("input_number.garden_watering_time",self.cumulative_total_mins) # store persistently
                  self.log(f"Cumulative Garden Run Time: {self.cumulative_total_mins} mins")
 

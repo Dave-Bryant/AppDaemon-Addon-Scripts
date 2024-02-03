@@ -9,10 +9,12 @@ appdaemon:
   time_zone: Australia/Sydney  
   plugins:
     HASS:
-      type: hass    
+      type: hass 
+      # persist_entities: True
     MQTT:
        type: mqtt
        namespace: mqtt
+       persist_entities: True
        client_host: 10.0.0.55
        client_user: AppDaemon_Monitor
        client_password: david230355
@@ -25,4 +27,6 @@ api:
 hadashboard:
 # secrets: /addon_configs/a0d7b954_appdaemon/secrets.yaml
 secrets: /homeassistant/secrets.yaml
-
+logs:  
+  main_log:    
+    log_size: 2048

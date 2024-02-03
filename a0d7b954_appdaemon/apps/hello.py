@@ -41,7 +41,27 @@ class HelloWorld(hass.Hass):
      #self.call_service("smart_irrigation/set_bucket", entityid = "sensor.smart_irrigation_garden", data = 2 )
      # self.log("Reset complete")
 
-     #self.run_every(self.main_routine,"now", 15)
+     # self.run_every(self.main_routine,"now", 15)
+
+
+     # Read Soil Moisture
+
+     try:
+        self.soil_moisture = float(self.get_state('sensor.soil_sensor_1_soil_moisture'))
+     except:
+        self.soil_moisture = 30  # set it to be ignored
+        self.log("Soil Moisture Batteries are low or flat")
+        self.call_service("notify/mobile_app_david_bryants_iphone",message = 'Soil Moisture Batteries are low')
+     
+     
+         
+     # if float(self.get_state('sensor.soil_sensor_1_battery')) < 20 or self.get_state('sensor.soil_sensor_1_soil_moisture') == 'unavailable':
+     #    self.soil_moisture = 30  # set it to be ignored
+     #    self.log("Soil Moisture Batteries are low or flat")
+     # else:
+     #    self.soil_moisture = float(self.get_state('sensor.soil_sensor_1_soil_moisture'))
+         
+            
      
      self.run_in(self.load_dataframe1, 0)
 
