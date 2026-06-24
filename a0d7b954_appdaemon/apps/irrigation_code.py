@@ -1,208 +1,259 @@
 import datetime
-
 import appdaemon.plugins.hass.hassapi as hass
 
 
-#
 class Home_Irrigation(hass.Hass):
 
-  def initialize(self):
-     self.start_time = self.args["START_TIME"]
-     self.start_days = self.args["START_DAYS"].split(",") # split up supplied days list
-     self.dayz = ('mon','tue','wed','thu','fri','sat','sun')  # work out todays date
-     self.precipitation_threshold = self.args["PRECIPITATION_THRESHOLD"] # the rain chance probability after which irrigating will occur
-     self.precipitation_threshold_48 = self.args["PRECIPITATION_THRESHOLD_48"]
-     self.watering_threshold = self.args["WATERING_THRESHOLD"]  # the daily watering point where irrigating will occur
-     self.soil_moisture_min = self.args["SOILMOISTUREMIN"]
-     #self.reset_bucket = self.args["RESET_BUCKET"]  # signals to an irrigation instance to reset the bucket
-     self.garden_run = self.args["GARDEN_RUN"] # signals to an irrigation instance to reset the garde watering cumulative total as this instance will water the garden
-     self.no_of_schedules = self.args["NO_OF_SCHEDULES"]
-     self.valve_lead_time = self.args["VALVE_LEAD_TIME"]
-     self.master_valve_lead_time = self.args["MASTER_VALVE_LEAD_TIME"]
+    def initialize(self):
+        self.start_time = self.args["START_TIME"]
+        self.start_days = self.args["START_DAYS"].split(",")
+        self.dayz = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
+        self.precipitation_threshold = self.args["PRECIPITATION_THRESHOLD"]
+        self.precipitation_threshold_48 = self.args["PRECIPITATION_THRESHOLD_48"]
+        self.watering_threshold = self.args["WATERING_THRESHOLD"]
+        self.soil_moisture_min = self.args["SOILMOISTUREMIN"]
+        self.rain_threshold = self.args["RAINTHRESHOLD"]
+        self.garden_run = self.args["GARDEN_RUN"]
+        self.no_of_schedules = self.args["NO_OF_SCHEDULES"]        
+        self.debug = self.args.get("debug_run", False)
+        self._queue_handles = []
 
-     self.start_time = self.parse_time(self.start_time, aware=False) # Tried aware =True and got an error TypeError: can't compare offset-naive and offset-aware datetimes. Changed to false to see how it goes.
-     self.run_daily(self.main_routine, self.start_time)  #####
-     # self.run_in(self.main_routine, 0)
+        self.run_daily(self.main_routine, self.start_time)
+        self.listen_state(self.toggle_handler, "input_boolean.auto_irrigation_switch")
+        self.run_in(self._init_entities, 10)        
 
-  def main_routine(self, *args):
-     if self.dayz[datetime.datetime.today().weekday()] in self.start_days:
+        if self.debug:
+            self.log("DEBUG: debug_run=true running irrigation logic immediately")
+            self.run_in(self.main_routine, 2)
 
-         self.stations = {
-                    self.args["STATION_1"]:{'self.number': '1','self.station_weight':self.args["STATION_1_WEIGHT"],'self.window': str(self.args["STATION_1_WINDOW"]), 'self.window_start':str(self.args["VALVE_LEAD_TIME"] + self.args["MASTER_VALVE_LEAD_TIME"]),
-                                    'self.station_running_time': ''
-                                    },
-                    self.args["STATION_2"]:{'self.number': '2','self.station_weight':self.args["STATION_2_WEIGHT"],'self.window': str(self.args["STATION_2_WINDOW"]), 'self.window_start': str(self.args["VALVE_LEAD_TIME"] + self.args["MASTER_VALVE_LEAD_TIME"] + self.args["STATION_1_WINDOW"]),
-                                    'self.station_running_time': ''
-                                    },
-                    self.args["STATION_3"]:{'self.number': '3','self.station_weight':self.args["STATION_3_WEIGHT"],'self.window': str(self.args["STATION_3_WINDOW"]), 'self.window_start': str(self.args["VALVE_LEAD_TIME"] + self.args["MASTER_VALVE_LEAD_TIME"] + self.args["STATION_1_WINDOW"] + self.args["STATION_2_WINDOW"]),
-                                    'self.station_running_time': ''
-                                    },
-                    self.args["STATION_4"]:{'self.number': '4','self.station_weight':self.args["STATION_4_WEIGHT"],'self.window': str(self.args["STATION_4_WINDOW"]), 'self.window_start': str(self.args["VALVE_LEAD_TIME"] + self.args["MASTER_VALVE_LEAD_TIME"] + self.args["STATION_1_WINDOW"] + self.args["STATION_2_WINDOW"] + self.args["STATION_3_WINDOW"]),
-                                    'self.station_running_time': ''
-                                    },
-                    self.args["STATION_5"]:{'self.number': '5','self.station_weight':self.args["STATION_5_WEIGHT"],'self.window': str(self.args["STATION_5_WINDOW"]), 'self.window_start': str(self.args["VALVE_LEAD_TIME"] + self.args["MASTER_VALVE_LEAD_TIME"] + self.args["STATION_1_WINDOW"] + self.args["STATION_2_WINDOW"] + self.args["STATION_3_WINDOW"] + self.args["STATION_4_WINDOW"]),
-                                    'self.station_running_time': ''
-                                    },
-                    self.args["STATION_6"]:{'self.number': '6','self.station_weight':self.args["STATION_6_WEIGHT"],'self.window': str(self.args["STATION_6_WINDOW"]), 'self.window_start': str(self.args["VALVE_LEAD_TIME"] + self.args["MASTER_VALVE_LEAD_TIME"] + self.args["STATION_1_WINDOW"] + self.args["STATION_2_WINDOW"] + self.args["STATION_3_WINDOW"] + self.args["STATION_4_WINDOW"] + self.args["STATION_5_WINDOW"]),
-                                    'self.station_running_time': ''
-                                    },
-                    self.args["STATION_7"]:{'self.number': '7','self.station_weight':self.args["STATION_7_WEIGHT"],'self.window': str(self.args["STATION_7_WINDOW"]), 'self.window_start': str(self.args["VALVE_LEAD_TIME"] + self.args["MASTER_VALVE_LEAD_TIME"] + self.args["STATION_1_WINDOW"] + self.args["STATION_2_WINDOW"] + self.args["STATION_3_WINDOW"] + self.args["STATION_4_WINDOW"] + self.args["STATION_5_WINDOW"] + self.args["STATION_6_WINDOW"]  ),
-                                    'self.station_running_time': ''
-                                    }
-                     }
+    def terminate(self):
+        for handle in self._queue_handles:
+            self.cancel_timer(handle)
+        self._queue_handles.clear()
 
-         # if API is down then set variables to zero and 100 to ensure Irrigation not needed
-         if self.get_state("sensor.high_temperature_today") == 0:
+    def toggle_handler(self, entity, attribute, old, new, kwargs):
+        self.log(f"{entity} changed from {old} to {new}")
+
+    def _build_stations(self):
+        args = self.args
+        stations = {}
+        for n in range(1, 8):
+            key = args[f"STATION_{n}"]
+            stations[key] = {
+                'number': str(n),
+                'station_weight': args[f"STATION_{n}_WEIGHT"],
+                'station_running_time': 0.0,
+            }
+            if self.debug:
+                self.log(f"DEBUG _build_stations: station {n} key={key} weight={args[f'STATION_{n}_WEIGHT']}")
+        return stations
+
+    def _load_sensors(self):
+        if (self.get_state("sensor.high_temperature_today") == 0
+                or self.get_state("sensor.precip_chance_today") == "unknown"):
             self.running_time = 0.0
-            # set up all the variables
             self.chance_of_precipitation = 100.0
             self.chance_of_precipitation_48hrs = 100.0
             self.precipitation = 10.0
-            # self.hourly_adjusted_running_time =  0.0
-            self.log("WU API is down, set variables to zero and 100 to ensure Irrigation not needed")
-         else:
-            self.running_time = float(self.get_state('input_number.lawn_watering_time'))*60
-            # set up all the variables
-            self.chance_of_precipitation = float(self.get_state('sensor.precip_chance_today'))
-            self.chance_of_precipitation_48hrs = float(self.get_state('sensor.precip_chance_tomorrow'))
-            self.precipitation = float(self.get_state('sensor.dailyrain'))
+            self.log("WU API is down — variables set to safe defaults to prevent irrigation")
+        else:
+            self.running_time = self.to_float(self.get_state('input_number.lawn_watering_time')) * 60
+            self.chance_of_precipitation = self.to_float(self.get_state('sensor.precip_chance_today'))
+            self.chance_of_precipitation_48hrs = self.to_float(self.get_state('sensor.precip_chance_tomorrow'))
+            self.precipitation = self.to_float(self.get_state('sensor.ws2900c_v2_01_10_daily_rain'))
 
-        # Read Soil Moisture
-         try:
-            self.soil_moisture = float(self.get_state('sensor.soil_sensor_1_soil_moisture'))
-         except:
-            self.soil_moisture = 30  # set it to be ignored
-            self.log("Soil Moisture Batteries are low or flat")
-            self.call_service("notify/mobile_app_david_bryants_iphone",message = 'Soil Moisture Batteries are low') 
+        s1 = self.to_float(self.get_state('sensor.soil_moisture_1_soil_moisture'))
+        s2 = self.to_float(self.get_state('sensor.soil_moisture_2_soil_moisture'))
+        s1_ok = s1 > 0.0
+        s2_ok = s2 > 0.0
 
-         # Find first switch then remove master valve times from all other switches
-         for i in self.stations:
-             if i[:6] == 'switch':
-                 self.firstswitch = self.stations[i]['self.number']
-                 break
-         for i in self.stations:
-             if int(self.stations[i]['self.number']) != int(self.firstswitch):
-                self.stations[i]['self.window_start'] = int(self.stations[i]['self.window_start']) - int(self.master_valve_lead_time)
+        if s1_ok and s2_ok:
+            self.soil_moisture = min(s1, s2)
+            self.log(f"Soil moisture: sensor1={s1}% sensor2={s2}% using min={self.soil_moisture}%")
+        elif s1_ok:
+            self.soil_moisture = s1
+            self.log(f"Soil moisture: sensor2 failed, using sensor1={s1}%")
+            self.call_service(
+                "notify/mobile_app_david_bryants_iphone",
+                message='Soil Moisture sensor 2 issue — check batteries or device'
+            )
+        elif s2_ok:
+            self.soil_moisture = s2
+            self.log(f"Soil moisture: sensor1 failed, using sensor2={s2}%")
+            self.call_service(
+                "notify/mobile_app_david_bryants_iphone",
+                message='Soil Moisture sensor 1 issue — check batteries or device'
+            )
+        else:
+            self.soil_moisture = 1.0
+            self.log("Soil moisture: both sensors failed — defaulting to 1%")
+            self.call_service(
+                "notify/mobile_app_david_bryants_iphone",
+                message='Both Soil Moisture sensors failed — check batteries or devices'
+            )
 
-         # print report to log
-         self.log(f"Daily is: {self.running_time} seconds. Probability of Rain: {self.chance_of_precipitation}%. Probability of Rain 24hrs: {self.chance_of_precipitation_48hrs}%. Watering Threshold: {self.watering_threshold}sec. Precipitation: {self.precipitation}mm. Soil Moisture: {self.soil_moisture}%  Garden Watering time: {self.get_state('input_number.garden_watering_time')} sec.")
+    def main_routine(self, *args):
+        today = self.dayz[datetime.datetime.today().weekday()]
+        if today not in self.start_days:
+            self.log("Wrong day")
+            return
 
-         # conditions to proceed
-         if self.running_time <= self.watering_threshold: self.select_option("input_select.irrigation_status", "Irrigation run time too small")
-         if int(self.running_time) == 0: self.select_option("input_select.irrigation_status", "No moisture lost yesterday")
-         # if self.hourly_adjusted_running_time <= 0: self.select_option("input_select.irrigation_status", "It has rained")
-         if self.chance_of_precipitation > self.precipitation_threshold: self.select_option("input_select.irrigation_status", "Rain is coming")
-         if self.chance_of_precipitation_48hrs > self.precipitation_threshold_48: self.select_option("input_select.irrigation_status", "Rain is coming")
-         if self.precipitation != 0: self.select_option("input_select.irrigation_status", "It has rained")
-         if self.soil_moisture > self.soil_moisture_min: self.select_option("input_select.irrigation_status", "Soil Moisture too high")
+        self.stations = self._build_stations()
+        self._load_sensors()
 
-         if self.running_time > self.watering_threshold and self.chance_of_precipitation <= self.precipitation_threshold and self.chance_of_precipitation_48hrs <= self.precipitation_threshold_48 and self.precipitation == 0 and self.soil_moisture <= self.soil_moisture_min:
+        self.log(
+            f"Daily run time: {self.running_time:.0f}s (threshold: {self.watering_threshold}s) : "
+            f"{'OK' if self.running_time > self.watering_threshold else 'SKIP'}. "
+            f"Rain today: {self.chance_of_precipitation}% (threshold: {self.precipitation_threshold}) : "
+            f"{'OK' if self.chance_of_precipitation <= self.precipitation_threshold else 'SKIP'}. "
+            f"Rain 48h: {self.chance_of_precipitation_48hrs}% (threshold: {self.precipitation_threshold_48}) : "
+            f"{'OK' if self.chance_of_precipitation_48hrs <= self.precipitation_threshold_48 else 'SKIP'}. "
+            f"Precipitation: {self.precipitation}mm (threshold: {self.rain_threshold}) : "
+            f"{'OK' if self.precipitation <= self.rain_threshold else 'SKIP'}. "
+            f"Soil moisture: {self.soil_moisture}% (min: {self.soil_moisture_min}) : "
+            f"{'OK' if self.soil_moisture <= self.soil_moisture_min else 'SKIP'}. "
+            f"Garden watering time: {self.get_state('input_number.garden_watering_time')} min. "
+            f"All conditions must be OK to irrigate."
+        )
 
-             # allocate run time across schedules
-             self.running_time = self.running_time / self.no_of_schedules
-             self.garden_running_time = float(self.get_state('input_number.garden_watering_time'))*60
+        if self.running_time <= self.watering_threshold:
+            status = "No moisture lost yesterday" if int(self.running_time) == 0 else "Irrigation run time too small"
+            self.select_option("input_select.irrigation_status", status)
+        if self.chance_of_precipitation > self.precipitation_threshold:
+            self.select_option("input_select.irrigation_status", "Rain is coming")
+        if self.chance_of_precipitation_48hrs > self.precipitation_threshold_48:
+            self.select_option("input_select.irrigation_status", "Rain is coming")
+        if self.precipitation > self.rain_threshold:
+            self.select_option("input_select.irrigation_status", "It has rained")
+        if self.soil_moisture > self.soil_moisture_min:
+            self.select_option("input_select.irrigation_status", "Soil Moisture too high")
 
-             # If Garden Run then set garden run time, else store run time for gardens
-             if self.garden_run:
-                 for i in self.stations:
-                     if i[0:8] != 'noswitch':
-                         self.stations[i]['self.station_running_time'] = self.garden_running_time
+        should_irrigate = (
+            self.running_time > self.watering_threshold
+            and self.chance_of_precipitation <= self.precipitation_threshold
+            and self.chance_of_precipitation_48hrs <= self.precipitation_threshold_48
+            and self.precipitation <= self.rain_threshold
+            and self.soil_moisture <= self.soil_moisture_min
+        )
 
-                 self.set_value("input_number.garden_watering_time", 0)
-                 self.log(f"Reset Cumulative Garden Run Time to zero")
-             else:
-                 self.garden_watering_time_secs = float(self.get_state('input_number.garden_watering_time'))*60
-                 self.cumulative_total = int(self.running_time + self.garden_watering_time_secs)
-                 self.cumulative_total_mins = int(self.cumulative_total / 60)
-                 self.set_value("input_number.garden_watering_time",self.cumulative_total_mins) # store persistently
-                 self.log(f"Cumulative Garden Run Time: {self.cumulative_total_mins} mins")
+        if self.debug:
+            self.log(f"DEBUG should_irrigate={should_irrigate} garden_run={self.garden_run}")
+
+        if should_irrigate:
+            self._run_irrigation()
+        else:
+            self.log("Irrigation not needed")
+
+    def _run_irrigation(self):
+        if self.debug:
+            for handle in self._queue_handles:
+                self.cancel_timer(handle)
+            self._queue_handles.clear()
+
+        base_run_time = self.running_time / self.no_of_schedules
+        garden_running_time = self.to_float(self.get_state('input_number.garden_watering_time')) * 60
+
+        if self.debug:
+            self.log(f"DEBUG _run_irrigation: base_run_time={base_run_time:.0f}s garden_running_time={garden_running_time:.0f}s")
+
+        if self.garden_run:
+            for key, data in self.stations.items():
+                if not key.startswith('noswitch'):
+                    self._assign_station_time(key, data, garden_running_time)
+            self.set_value("input_number.garden_watering_time", 0)
+            self.log("Reset cumulative garden run time to zero")
+        else:
+            cumulative_secs = int(base_run_time + garden_running_time)
+            cumulative_mins = int(cumulative_secs / 60)
+            self.set_value("input_number.garden_watering_time", cumulative_mins)
+            self.log(f"Cumulative garden run time: {cumulative_mins} mins")
+            for key, data in self.stations.items():
+                if not key.startswith('noswitch'):
+                    self._assign_station_time(key, data, base_run_time)
+
+        for key, data in self.stations.items():
+            if not key.startswith('noswitch'):
+                duration = self.convert_seconds(data['station_running_time']).split('.')[0]
+                self.log(f"Station {data['number']} ({key}) run time: {duration}")
+
+        if self.precipitation > 0:
+            self.log("Skipping irrigation — it is currently raining")
+            return
+
+        for key, data in self.stations.items():
+            if not key.startswith('noswitch'):
+                self.set_textvalue(f"input_text.{key[7:]}_run_duration", str(round(data['station_running_time'])))        
+
+        switch_state = self.get_state("input_boolean.auto_irrigation_switch")
+        if switch_state is None:
+            self.log("WARNING: input_boolean.auto_irrigation_switch not found")
+            return
+        if switch_state != 'on':
+            self.log("Auto irrigation switch is off — not starting")
+            return
+
+        now = datetime.datetime.today()
+        delay = 0
+        for key, data in self.stations.items():
+            run_time = data['station_running_time']
+            if not key.startswith('noswitch') and run_time > 0.001:
+                if self.debug:
+                    self.log(f"DEBUG queuing {key} at +{delay}s for {round(run_time)}s")
+                handle = self.run_in(
+                    self._queue_station_cb, delay,
+                    current_station=key,
+                    run_seconds=round(run_time),
+                    now=now
+                )
+                self._queue_handles.append(handle)
+                delay += 2
+
+        self.log("Irrigation schedule set")
+        self.select_option("input_select.irrigation_status", "Normal")
+
+    # --- Callbacks ---
+
+    def _init_entities(self, kwargs):
+        for key in self._build_stations():
+            if not key.startswith('noswitch'):
+                suffix = key[7:]
+                for entity in (
+                    f"input_text.{suffix}_run_duration",
+                    f"input_text.{suffix}_run_date",
+                    f"input_text.{suffix}_run_time",
+                ):
+                    state = self.get_state(entity)
+                    #self.log(f"Init entity: {entity} = {state!r}")
+                    if state in (None, "unknown", "unavailable", ""):
+                        self.set_textvalue(entity, "----")
+
+    def _queue_station_cb(self, kwargs):
+        key = kwargs["current_station"]
+        run_seconds = kwargs["run_seconds"]
+        now = kwargs["now"]
+        self.call_service("opensprinkler/run", entity_id=key, run_seconds=run_seconds)
+        self.set_textvalue(f"input_text.{key[7:]}_run_date", now.strftime("%d/%m"))
+        self.set_textvalue(f"input_text.{key[7:]}_run_time", now.strftime("%H:%M"))
+        self.log(f"Queued {key} for {run_seconds}s")
+
+    # --- Helpers ---
+
+    def _assign_station_time(self, key, data, base_time):
+        if self.debug:
+            self.log(f"DEBUG station {data['number']} ({key}): base={base_time:.0f}s")
+        weighted = base_time * data['station_weight']
+        data['station_running_time'] = weighted
+        if self.debug:
+            self.log(f"DEBUG station {data['number']} ({key}): weighted={weighted:.0f}s")
 
 
-             self.log(f"Starting Irrigation. ")
 
-             # weight the running time & remove excess time for missing stations
-             for i in self.stations:
-                 if i[0:8] != 'noswitch':
-                     self.stations[i]['self.station_running_time'] = self.running_time*self.stations[i]['self.station_weight']
-                     self.avaiable_time = int(str(self.stations[i]['self.window']))-int(self.valve_lead_time)
-                     if int(self.stations[i]['self.station_running_time']) >= self.avaiable_time :
-                         self.stations[i]['self.station_running_time'] = self.avaiable_time
-                         self.log(f"{i} has maxed out")
-                 else:   # remove all the window of time from the schedule for the missing stations
-                     self.stations[i]['self.station_running_time'] = 0.0001
-                     for j in self.stations:
-                         if int(self.stations[j]['self.number']) > int(self.stations[i]['self.number']):
-                               self.stations[j]['self.window_start'] = int(self.stations[j]['self.window_start']) - int(self.stations[i]['self.window'])
+    def convert_seconds(self, n):
+        return str(datetime.timedelta(seconds=n))
 
-             # print report to log
-             for i in self.stations:
-                  self.converted_time = self.convert_seconds(float(self.stations[i]['self.station_running_time']))
-                  self.converted_time = self.converted_time.split('.', 1)[0]
-                  if i != 'noswitch': self.log(f"Station running times (minutes): Station {self.stations[i]['self.number']}: {self.converted_time}")
+    def to_float(self, data):
+        try:
+            return float(data)
+        except (ValueError, TypeError):
+            return 0.0
 
-             # update lovelace fields
-             for i in self.stations:
-                  if i[0:8] != 'noswitch': self.set_textvalue("input_text." + str(i)[7:] + "_run_duration",self.stations[i]['self.station_running_time'])
-
-             # make sure all valves are off
-             for i in self.stations:
-                 if i[0:8] != 'noswitch': self.turn_off(i)
-
-             # Turn on stations after waiting window seconds
-             for i in self.stations:  # the station variable assigned e.g. switch.frlawneast
-                 if i[0:8] != 'noswitch' and float(self.stations[i]['self.station_running_time']) > 0.0001:
-                      self.running_time = float(self.stations[i]['self.window_start'])
-                      # self.log(f" Station: {i} will start in {self.running_time} secs")
-                      self.run_in(self.turn_on_station_cb, self.running_time, current_station = i)
-                      self.running_time = round(float(self.stations[i]['self.station_running_time']) + float(self.running_time))
-                      # self.log(f" Station: {i} will stop in {self.running_time} secs")
-                      self.run_in(self.turn_off_station_cb, self.running_time, current_station = i)
-                 # else: self.stations[i]['self.window_start'] = 0
-
-            #  if self.reset_bucket:
-            #      self.call_service("smart_irrigation/reset_all_buckets") 
-            #      # self.call_service("smart_irrigation/smart_irrigation_disable_force_mode") # in case FORCE mode is on
-            #      # reset Watering System so daily calaculation is set to zero                 
-            #      self.log("Reset complete")
-
-             self.log("Irrigation schedule set")
-
-             # update irrigation status for Lovelace
-             self.select_option("input_select.irrigation_status", "Normal")
-
-         else:
-             self.log("Irrigation not needed")
-             if self.precipitation != 0:            # the rain monitor should do this but this caters for rain within the hour
-                self.set_value("input_number.garden_watering_time", 0)
-                self.log(f"Reset Cumulative Garden Run Time to zero as it has rained")
-
-     else:
-         self.log("Wrong day")
-# Methods
-
-  def turn_on_station_cb(self, kwargs): # run in decorator for run_in
-      self.turn_on_station(kwargs["current_station"])
-  def turn_on_station(self, current_station):
-      if self.get_state(current_station) == 'off':
-          if self.precipitation == 0:
-              self.turn_on(current_station)
-              self.log("Started Station watering: %s Valve is on", current_station)
-              self.set_textvalue("input_text." + current_station[7:] + "_run_date",datetime.datetime.today().strftime("%d/%m"))
-              self.set_textvalue("input_text." + current_station[7:] + "_run_time",datetime.datetime.today().strftime("%H:%M"))
-          else:
-              self.log("%s is not needed as raining already", current_station)
-      else:
-          self.log("%s is already on...could be an error", current_station)
-
-
-  def turn_off_station_cb(self, kwargs): # run in decorator for run_in
-      self.turn_off_station(kwargs["current_station"])
-  def turn_off_station(self, current_station):
-      if self.get_state(current_station) == 'on':
-          self.turn_off(current_station)
-      else:
-          self.log("%s is already off...could be an error or could have rained", current_station)
-      self.log("Stopped Station watering: %s Valve is off", current_station)
-
-  def convert_seconds(self,n):
-      return str(datetime.timedelta(seconds = n))

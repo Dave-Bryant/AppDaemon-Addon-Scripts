@@ -28,8 +28,15 @@ import pandas as pd
 
   
 class HelloWorld(hass.Hass):
-  def initialize(self):
-     self.log("Hello from AppDaemon")
+    def initialize(self):
+        self.log("Hello from AppDaemon")
+        
+    #     self.listen_state(self.toggle_handler, "input_boolean.auto_irrigation_switch")
+
+    # def toggle_handler(self, entity, attribute, old, new, kwargs):
+    #     self.log(f"{entity} changed from {old} to {new}")
+
+
     #  ET= 4.5
     #  ET_calc= 4.25
     #  apply_rain= 0.5
@@ -46,12 +53,13 @@ class HelloWorld(hass.Hass):
 
      # Read Soil Moisture
 
-     try:
-        self.soil_moisture = float(self.get_state('sensor.soil_sensor_1_soil_moisture'))
-     except:
-        self.soil_moisture = 30  # set it to be ignored
-        self.log("Soil Moisture Batteries are low or flat")
-        self.call_service("notify/mobile_app_david_bryants_iphone",message = 'Soil Moisture Batteries are low')
+     # try:
+     #    self.soil_moisture = float(self.get_state('sensor.soil_sensor_1_soil_moisture'))
+     # except:
+     #    self.soil_moisture = 30  # set it to be ignored
+     #    self.log("Soil Moisture Batteries are low or flat")
+     #self.log(self.list_services(namespace="global"))
+     #self.call_service("notify/mobile_app_david_bryants_iphone",message = 'Soil Moisture Batteries are low')
      
      
          
@@ -63,16 +71,22 @@ class HelloWorld(hass.Hass):
          
             
      
-     self.run_in(self.load_dataframe1, 0)
+        self.run_in(self.main_routine, 0)    
 
-  def load_dataframe1(self, *args):
-      # Connect to History Database
-      
-            
-      self.run_in(self.main_routine, 0)     
-     
   
-  def main_routine(self, *args):
-    self.log("Bye from AppDaemon") 
+    def main_routine(self, *args):
+        self.log("Here from AppDaemon?????") 
+        #self.select_option("input_select.irrigation_status", "Normal")
+        # if self.get_state("input_boolean.auto_master_switch") == "off": self.log("switch is off")
+        # else: self.log("switch is on")
+        # self.soil_moisture_text = "Soil Moisture too high: " + str(self.get_state("sensor.soil_sensor_1_soil_moisture")) + "%"  
+        #print(self.soil_moisture_text)
+        # self.state = self.get_state("input_boolean.auto_irrigation_switch")
+        
+        # if self.state == "on":
+        #     self.log("Auto irrigation is enabled, proceeding with action.")
+        # elif self.state is None:
+        #     self.log("Warning: input_boolean.auto_irrigation_switch not found.")
+        self.log("Bye from AppDaemon") 
     
   

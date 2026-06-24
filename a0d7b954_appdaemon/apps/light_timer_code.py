@@ -22,7 +22,8 @@ class Light_Timer(hass.Hass):
         # self.run_at(self.before_sunset_cb, "09:05:00") test
 
     def before_sunset_cb(self, kwargs):
-        if self.get_state("binary_sensor.somebody_is_home") == "off":
+        self.people_home = self.args["PEOPLE_HOME"]
+        if self.get_state("self.people_home") == 0:
             # self.log("Starting Light_Timer")
             self.Target_Light = self.args["LIGHT_SWITCH"]
             self.log("Starting %s", self.Target_Light)
@@ -35,9 +36,11 @@ class Light_Timer(hass.Hass):
             exit
 
     def flashing_light(self, *args):
+        self.people_home = self.args["PEOPLE_HOME"]
+        if self.get_state("self.people_home") == "off": exit # Master Switch is off
         if (
             self.get_state("sun.sun") == "below_horizon"
-            and self.get_state("binary_sensor.somebody_is_home") == "off"):
+            and self.get_state("self.people_home") == "off"):
             self.duration_of_light = random.randint(3, 9) * 600  # 30-90 minutes
             self.toggle(entity_id=self.Target_Light)
             self.first_pass = True
@@ -54,7 +57,7 @@ class Light_Timer(hass.Hass):
                 self.log("%s has finished naturally", self.Target_Light)
             if (
                 self.get_state("sun.sun") == "above_horizon"
-                and self.get_state("binary_sensor.somebody_is_home") == "on"
+                and self.get_state("self.people_home") == "on"
             ):
                 if self.first_pass:  # first pass
                     if self.get_state(entity_id=self.Target_Light) == "off":

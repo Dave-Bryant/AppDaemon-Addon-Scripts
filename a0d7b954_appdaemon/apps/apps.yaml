@@ -1,4 +1,148 @@
 ---
+# ─── YAML anchor — AppDaemon skips this (no module). Harmless warning in log. ───
+_lawn_defaults: &lawn_defaults
+  module: irrigation_code
+  class: Home_Irrigation
+  debug_run: false
+  START_TIME: '00:00:01'  # required — never conflicts with real instances
+  START_DAYS: ""           # never matches any day — always exits "Wrong day"
+  RESET_BUCKET: False
+  GARDEN_RUN: False
+  PRECIPITATION_THRESHOLD: 80
+  PRECIPITATION_THRESHOLD_48: 90
+  WATERING_THRESHOLD: 360
+  NO_OF_SCHEDULES: 4
+  SOILMOISTUREMIN: 75
+  RAINTHRESHOLD: 2  
+  STATION_1: 'switch.opensprinkler_1_front_lawn_station_enabled'  #Front Lawn West Irrigation
+  STATION_2: 'switch.opensprinkler_2_front_lawn_left_station_enabled'  #Front Lawn East Irrigation
+  STATION_3: 'switch.opensprinkler_3_back_lawn_south_station_enabled'  #Back Lawn South Irrigation
+  STATION_4: 'switch.opensprinkler_4_back_lawn_north_station_enabled'  #Back Lawn North Irrigation
+  STATION_5: 'noswitch5'
+  STATION_6: 'noswitch6'
+  STATION_7: 'noswitch7'
+  # The weighting is used to account for different areas and characteristics i.e. weight = station_area / total_lawn_area
+  STATION_1_WEIGHT: 0.2   # Was .6  19% of total are a of 338 sq mtrs
+  STATION_2_WEIGHT: 0.3   # Was .9  30% of total area of 338 sq mtrs
+  STATION_3_WEIGHT: 0.25  # Was .75 25% of total area of 338 sq mtrs
+  STATION_4_WEIGHT: 0.26  # Was .5  26% of total area of 338 sq mtrs
+  STATION_5_WEIGHT: 1.00  # Not used
+  STATION_6_WEIGHT: 0.4
+  STATION_7_WEIGHT: 0.4   
+
+# irrigationTest:  
+#   <<: *lawn_defaults
+#   debug_run: true  
+#   START_TIME: '13:19:00'
+#   START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
+#   RESET_BUCKET: False
+
+irrigation1:  
+  <<: *lawn_defaults
+  START_TIME: '21:00:00'
+  START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
+  RESET_BUCKET: False
+
+irrigation2:  
+  <<: *lawn_defaults
+  START_TIME: '23:00:00'
+  START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
+  RESET_BUCKET: False
+
+irrigation3:  
+  <<: *lawn_defaults
+  START_TIME: '02:00:00'
+  START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
+  RESET_BUCKET: True
+
+irrigation4:  
+  <<: *lawn_defaults
+  START_TIME: '05:00:00'
+  START_DAYS: "tue,wed,thu,fri,sat,sun"  # no monday 
+  RESET_BUCKET: True  
+
+irrigationG:              # Gardens
+  module: irrigation_code
+  class: Home_Irrigation
+  debug_run: false
+  START_TIME: '18:00:00'  # was 19:00 Waterme updated
+  START_DAYS: "tue,thu,sat" # was sat
+  PRECIPITATION_THRESHOLD: 80
+  PRECIPITATION_THRESHOLD_48: 90
+  WATERING_THRESHOLD: 360
+  NO_OF_SCHEDULES: 1
+  SOILMOISTUREMIN: 75
+  RAINTHRESHOLD: 2
+  RESET_BUCKET: False
+  GARDEN_RUN: True 
+  STATION_1: 'noswitch1'
+  STATION_2: 'noswitch2'
+  STATION_3: 'noswitch3'
+  STATION_4: 'noswitch4'
+  STATION_5: 'noswitch5'  # Not Used
+  STATION_6: 'switch.opensprinkler_6_west_side_back_gardens_station_enabled'  # Back & Side Garden
+  STATION_7: 'switch.opensprinkler_7_east_side_front_gardens_station_enabled' # East Side and Front Garden
+  # The weighting is used to account for different areas and characteristics
+  STATION_1_WEIGHT: 0.2   # Was .6  19% of total are a of 338 sq mtrs
+  STATION_2_WEIGHT: 0.3   # Was .9  30% of total area of 338 sq mtrs
+  STATION_3_WEIGHT: 0.25  # Was .75 25% of total area of 338 sq mtrs
+  STATION_4_WEIGHT: 0.26  # Was .5  26% of total area of 338 sq mtrs
+  STATION_5_WEIGHT: 1.0  # Not Used
+  # Clay typically needs 3-6L/m² to wet the soil to root depth for established plants 2–3 times per week. Given the Gardens deliver 6 L/m²/hour this would be 1 hour at 3 times a week at the top of the range. This is equivalent in lawn watering time over three days of 150m (EV of 10 mm/day or 50m/day). The conversion factor from Lawn Watering to Garden Watering is therefore 60m/150m = .4 
+  # Wrong Logic not sure why: The Garden calculations use the Lawn Watering time (for 338 sq metres) and pro rata it down (for Gardens of 195 sq metres) using a factor of 60%. Given the L/m2/hour for the lawn is three times the garden rate the final conversion factor is Lawn Watering Time * 0.6 * 3 = Garden Watering Time. So the weight of 1.8 is used for Station 6 and 7 using this conversion.     
+  STATION_6_WEIGHT: 0.4  # 75 metres of drip line with 1 hole every 300 mm delivering 30ml per minute i.e. 75 / .3 * 30 = 7.5 litres per minute or .1 Litre per metre per minute. Based on typical bed of 1m wide this is 6 L/m²/hour. 
+  STATION_7_WEIGHT: 0.4  # 120 metres of drip line with 1 hole every 300 mm delivering 30ml per minute i.e. 120 / .3 * 30 = 12 litres per minute or .1 Litre per metre per minute. Based on typical bed of 1m wide this is 6 L/m²/hour.
+  
+
+irrigation_rain_monitor:              # Resets cumulative garden run time if rain occurs
+  module: irrigation_rain_monitor_code
+  class: Home_Irrigation_rain_monitor
+  PRECIPITATION_THRESHOLD: 2.0   # mm
+  ET_CALC_HOUR: 22
+  SENSOR_DAILY_RAIN: "sensor.dailyrain"
+  ENTITY_LAWN_RUNTIME: "input_number.lawn_watering_time"
+  ENTITY_GARDEN_RUNTIME: "input_number.garden_watering_time"
+  STATION_ENTITIES:
+    - 'switch.opensprinkler_1_front_lawn_station_enabled'
+    - 'switch.opensprinkler_2_front_lawn_left_station_enabled'
+    - 'switch.opensprinkler_3_back_lawn_south_station_enabled'
+    - 'switch.opensprinkler_4_back_lawn_north_station_enabled'
+    - 'switch.opensprinkler_6_west_side_back_gardens_station_enabled'
+    - 'switch.opensprinkler_7_east_side_front_gardens_station_enabled'
+
+
+irrigation_ET_calculator:              # Calculates ET & Run time daily howzat   
+  module: irrigation_ET_calculator
+  class: ET_Calculation
+  EVAPOTRANSPIRATION: "input_number.daily_et"
+  EVAPOTRANSPIRATIONCALC: "input_number.daily_calc_et"
+  DAILYRAINEVENT: "input_number.daily_rain_event"   # this is rain bucket remaining after rain event rain is subtracted from the bucket
+  IRRIGATIONRUNTIME: "input_number.lawn_watering_time" 
+  ETCALCSTARTTIME: '22:15:00'
+  MAXBUCKETSIZE : 6 # mm
+  AREA:  338  #m2
+  SPRINKLERNUMBER: 20
+  SPRINKLERHALFCIRCLERATE: 0.1827529 #m3/h   Hunter PS Ultra 10A 120degrees .67 GPM x .27276552 G/min
+  SPRINKLERMAXRUNTIME: 3600 # secs i.e. 60 mins
+  DAILYRAIN: "sensor.ws2900c_v2_01_10_daily_rain"
+  EVENTRAIN: "sensor.ws2900c_v2_01_10_event_rain"
+  # InfluxDB connection
+  INFLUXDB_HOST: "10.0.0.55"
+  INFLUXDB_PORT: 8086
+  INFLUXDB_USER: "homeassistant"
+  INFLUXDB_PASSWORD: "david"
+  INFLUXDB_DATABASE: "homeassistant"
+  # Weather station InfluxDB entity_id tags
+  TAG_TEMPERATURE: "ws2900c_v2_01_10_outdoor_temperature"
+  TAG_HUMIDITY: "ws2900c_v2_01_10_humidity"
+  TAG_PRESSURE: "ws2900c_v2_01_10_absolute_pressure"
+  TAG_DEWPOINT: "ws2900c_v2_01_10_dewpoint"
+  TAG_WINDSPEED: "ws2900c_v2_01_10_wind_speed"
+  TAG_SOLARRADIATION: "ws2900c_v2_01_10_solar_radiation"
+  # Notification target
+  NOTIFYTARGET: "notify.mobile_app_david_bryants_iphone"
+
+
 hello_world:
   module: hello
   class: HelloWorld
@@ -7,15 +151,10 @@ hello_world:
 mercedes_tyre_check:
   module: mercedes_check
   class: mercedes_tyre_check
-  percent_tolerance: 10 # +/- 10%
-  distance_before: 10000 # tyre realignment every 10k
+  percent_tolerance: 10
+  distance_before: 20000
   ODOMETER: "sensor.ayaf94h_odometer"
-  tyre_check_switch : "input_boolean.check_odometer"
-
-# canberra_dams:
-#   module: canberradams
-#   class: Get_ACT_Dams
-#   DAM_FLAG: 'input_boolean.check_dams'
+  tyre_check_switch: "input_boolean.check_odometer"
 
 act_garbage:
   module: act_garbage
@@ -24,319 +163,114 @@ act_garbage:
   SUBURB: "NICHOLLS"
   SPLIT_SUBURB: ""
 
-internet_health_monitor:
-  module: auto_internet_rebooter_DBMods
-  class: AutoInternetRebooter
-  internet:
-    download: sensor.speedtest_download
-    upload: sensor.speedtest_upload
-    ping: sensor.speedtest_ping
-    switch: switch.switch_for_router_in_garage
-  thresholds:
-    download_mbps: 10.0
-    upload_mbps: 1.0
-    ping_ms: 75
-    unavailable_threshold : 2
-  debug: True
-  delay: 300 # Seconds between recycling
-  #OPTIONAL SPEECH NOTIFICATIONS
-  notify:
-    #google: media_player.nesthub9e11
-    google: media_player.office_speaker
-    start_time: "00:01:00"
-    end_time: "23:59:00"
-  #OPTIONAL SPEECH NOTIFICATIONS
-
-irrigation1:
-  module: irrigation_code
-  class: Home_Irrigation
-  START_TIME: '21:00:00'
-  START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
-  PRECIPITATION_THRESHOLD: 80
-  PRECIPITATION_THRESHOLD_48: 90
-  WATERING_THRESHOLD: 360
-  NO_OF_SCHEDULES: 4
-  SOILMOISTUREMIN: 70
-  RESET_BUCKET: False
-  GARDEN_RUN: False
-  MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
-  VALVE_LEAD_TIME: 25
-  STATION_1: 'switch.irrigation_switch_1_l3'  #Front Lawn West Irrigation
-  STATION_2: 'switch.irrigation_switch_1_l2'  #Front Lawn East Irrigation
-  STATION_3: 'switch.irrigation_switch_1_l1'  #Back Lawn South Irrigation
-  STATION_4: 'switch.irrigation_switch_1_l4'  #Back Lawn North Irrigation
-  STATION_5: 'noswitch5'
-  STATION_6: 'noswitch6'
-  STATION_7: 'switch.irrigation_switch_2_l2'
-  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
-  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
-  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
-  STATION_4_WEIGHT: 0.5  # reduced because in the shade
-  STATION_5_WEIGHT: 0.33
-  STATION_6_WEIGHT: 0.4
-  STATION_7_WEIGHT: 0.1  # not used at all
-  STATION_1_WINDOW: 900 # 15 mins for the window
-  STATION_2_WINDOW: 900 # 15 mins for the window
-  STATION_3_WINDOW: 1200 # 20 mins for the window
-  STATION_4_WINDOW: 1200 # 20 mins for the window
-  STATION_5_WINDOW: 1800 # 30 mins for the window
-  STATION_6_WINDOW: 3600 # 60 mins for the window
-  STATION_7_WINDOW: 900 # 15 mins for the window
-
-irrigation2:
-  module: irrigation_code
-  class: Home_Irrigation
-  START_TIME: '23:00:00'
-  START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
-  PRECIPITATION_THRESHOLD: 80
-  PRECIPITATION_THRESHOLD_48: 90
-  WATERING_THRESHOLD: 360
-  NO_OF_SCHEDULES: 4
-  SOILMOISTUREMIN: 70
-  RESET_BUCKET: False
-  GARDEN_RUN: False
-  MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
-  VALVE_LEAD_TIME: 25
-  STATION_1: 'switch.irrigation_switch_1_l3'  #Front Lawn West Irrigation
-  STATION_2: 'switch.irrigation_switch_1_l2'  #Front Lawn East Irrigation
-  STATION_3: 'switch.irrigation_switch_1_l1'  #Back Lawn South Irrigation
-  STATION_4: 'switch.irrigation_switch_1_l4'  #Back Lawn North Irrigation
-  STATION_5: 'noswitch5'
-  STATION_6: 'noswitch6'
-  STATION_7: 'switch.irrigation_switch_2_l2'
-  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
-  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
-  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
-  STATION_4_WEIGHT: 0.5  # reduced because in the shade
-  STATION_5_WEIGHT: 0.33
-  STATION_6_WEIGHT: 0.4
-  STATION_7_WEIGHT: 0.1  # not used
-  STATION_1_WINDOW: 900 # 15 mins for the window
-  STATION_2_WINDOW: 900 # 15 mins for the window
-  STATION_3_WINDOW: 1200 # 20 mins for the window
-  STATION_4_WINDOW: 1200 # 20 mins for the window
-  STATION_5_WINDOW: 1800 # 30 mins for the window
-  STATION_6_WINDOW: 3600 # 60 mins for the window
-  STATION_7_WINDOW: 900 # 15 mins for the window
-
-irrigation3:
-  module: irrigation_code
-  class: Home_Irrigation
-  START_TIME: '02:00:00' 
-  START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
-  PRECIPITATION_THRESHOLD: 80
-  PRECIPITATION_THRESHOLD_48: 90
-  WATERING_THRESHOLD: 360
-  NO_OF_SCHEDULES: 4
-  SOILMOISTUREMIN: 70
-  RESET_BUCKET: True
-  GARDEN_RUN: False
-  MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
-  VALVE_LEAD_TIME: 25
-  STATION_1: 'switch.irrigation_switch_1_l3'  #Front Lawn West Irrigation
-  STATION_2: 'switch.irrigation_switch_1_l2'  #Front Lawn East Irrigation
-  STATION_3: 'switch.irrigation_switch_1_l1'  #Back Lawn South Irrigation
-  STATION_4: 'switch.irrigation_switch_1_l4'  #Back Lawn North Irrigation
-  STATION_5: 'noswitch5'
-  STATION_6: 'noswitch6'
-  STATION_7: 'switch.irrigation_switch_2_l2'
-  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
-  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
-  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
-  STATION_4_WEIGHT: 0.5  # reduced because in the shade
-  STATION_5_WEIGHT: 0.33
-  STATION_6_WEIGHT: 0.4
-  STATION_7_WEIGHT: 0.1  # not used
-  STATION_1_WINDOW: 900 # 15 mins for the window
-  STATION_2_WINDOW: 900 # 15 mins for the window
-  STATION_3_WINDOW: 1200 # 20 mins for the window
-  STATION_4_WINDOW: 1200 # 20 mins for the window
-  STATION_5_WINDOW: 1800 # 30 mins for the window
-  STATION_6_WINDOW: 3600 # 60 mins for the window
-  STATION_7_WINDOW: 900 # 15 mins for the window
-
-irrigation4:
-  module: irrigation_code
-  class: Home_Irrigation
-  START_TIME: '05:00:00' 
-  START_DAYS: "mon,tue,wed,thu,fri,sat,sun"
-  PRECIPITATION_THRESHOLD: 80
-  PRECIPITATION_THRESHOLD_48: 90
-  WATERING_THRESHOLD: 360
-  NO_OF_SCHEDULES: 4
-  SOILMOISTUREMIN: 70
-  RESET_BUCKET: True
-  GARDEN_RUN: False
-  MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
-  VALVE_LEAD_TIME: 25
-  STATION_1: 'switch.irrigation_switch_1_l3'  #Front Lawn West Irrigation
-  STATION_2: 'switch.irrigation_switch_1_l2'  #Front Lawn East Irrigation
-  STATION_3: 'switch.irrigation_switch_1_l1'  #Back Lawn South Irrigation
-  STATION_4: 'switch.irrigation_switch_1_l4'  #Back Lawn North Irrigation
-  STATION_5: 'noswitch5'
-  STATION_6: 'noswitch6'
-  STATION_7: 'switch.irrigation_switch_2_l2'
-  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
-  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
-  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
-  STATION_4_WEIGHT: 0.5  # reduced because in the shade
-  STATION_5_WEIGHT: 0.33
-  STATION_6_WEIGHT: 0.4
-  STATION_7_WEIGHT: 0.1  # not used
-  STATION_1_WINDOW: 900 # 15 mins for the window
-  STATION_2_WINDOW: 900 # 15 mins for the window
-  STATION_3_WINDOW: 1200 # 20 mins for the window
-  STATION_4_WINDOW: 1200 # 20 mins for the window
-  STATION_5_WINDOW: 1800 # 30 mins for the window
-  STATION_6_WINDOW: 3600 # 60 mins for the window
-  STATION_7_WINDOW: 900 # 15 mins for the window
-
-irrigationG:              # Gardens
-  module: irrigation_code
-  class: Home_Irrigation
-  START_TIME: '19:00:00'  # was 19:00
-  START_DAYS: "tue,thu,sat" # was sat
-  PRECIPITATION_THRESHOLD: 80
-  PRECIPITATION_THRESHOLD_48: 90
-  WATERING_THRESHOLD: 360
-  NO_OF_SCHEDULES: 1
-  SOILMOISTUREMIN: 75
-  RESET_BUCKET: False
-  GARDEN_RUN: True
-  MASTER_VALVE_LEAD_TIME: 20 # 20 secs for master; 20 secs for station then some
-  VALVE_LEAD_TIME: 25
-  STATION_1: 'noswitch1'
-  STATION_2: 'noswitch2'
-  STATION_3: 'noswitch3'
-  STATION_4: 'noswitch4'
-  STATION_5: 'switch.irrigation_switch_2_l4'  # Front Garden
-  STATION_6: 'switch.irrigation_switch_2_l3'  # Back & Side Garden
-  STATION_7: 'noswitch7'
-  STATION_1_WEIGHT: 0.6   # Was .7             everything reduced by 40%
-  STATION_2_WEIGHT: 0.9 # Was 1.0631 reduced because grass was always moist
-  STATION_3_WEIGHT: 0.75  # Was 1.4 each station now 1.5 times Station 2 then divided by 2
-  STATION_4_WEIGHT: 0.5  # reduced because in the shade
-  STATION_5_WEIGHT: 1.65  # .33 results in 4 minutes of watering delivering a litre. Therefore 20min or 5 litres needs a factor of 1.65
-  STATION_6_WEIGHT: 2.0  # with a setting on .2 I got 6 mins on a hot day, 2.5 mins delivered half a bottle i.e. 5 mins per litre. Therefore for 60 min or 12 litres I need .2 x 10
-  STATION_7_WEIGHT: 0.1  # not used
-  STATION_1_WINDOW: 900 # 15 mins for the window
-  STATION_2_WINDOW: 900 # 15 mins for the window
-  STATION_3_WINDOW: 1200 # 20 mins for the window
-  STATION_4_WINDOW: 1200 # 20 mins for the window
-  STATION_5_WINDOW: 1800 # 30 mins for the window
-  STATION_6_WINDOW: 3600 # 60 mins for the window
-  STATION_7_WINDOW: 900 # 15 mins for the window
-
-irrigation_rain_monitor:              # Resets cumulative garden run time if rain occurs
-  module: irrigation_rain_monitor_code
-  class: Home_Irrigation_rain_monitor
-  PRECIPITATION_THRESHOLD: 2.0   # mm
-
-irrigation_ET_calculator:              # Calculates ET & Run time daily howzat   
-  module: irrigation_ET_calculator
-  class: ET_Calculation
-  EVAPOTRANSPIRATION: "input_number.daily_et"
-  EVAPOTRANSPIRATIONCALC: "input_number.daily_calc_et"
-  DAILYRAINEVENT: "input_number.daily_rain_event"
-  IRRIGATIONRUNTIME: "input_number.lawn_watering_time" 
-  ETCALCSTARTTIME: '22:15:00'
-  MAXBUCKETSIZE : 6 # mm
-  AREA:  328  #m2
-  SPRINKLERNUMBER: 20
-  SPRINKLERHALFCIRCLERATE: 0.1827529 #m3/h   Hunter PS Ultra 10A 120degrees .67 GPM x .27276552 G/min
-  SPRINKLERMAXRUNTIME: 2400 # secs i.e. 40 mins
-  DAILYRAIN: "sensor.dailyrain"
-  EVENTRAIN: "sensor.eventrain"
-         
-
 light_timer1:
   module: light_timer_code
   class: Light_Timer
   LIGHT_SWITCH: "switch.upstairs_light"
+  PEOPLE_HOME: "zone.home"
 
 light_timer2:
   module: light_timer_code
   class: Light_Timer
   LIGHT_SWITCH: "switch.spare_switch"
+  PEOPLE_HOME: "zone.home"
 
 light_timer3:
   module: light_timer_code
   class: Light_Timer
   LIGHT_SWITCH: "light.osram_light_family_room"
+  PEOPLE_HOME: "zone.home"
 
-home_presence_app:
-  module: home_presence_app
-  class: HomePresenceApp
-  plugin:
-    - HASS
-    - MQTT
-  # monitor_topic: presence
-  # mqtt_event: mqtt
-  # user_device_domain: device_tracker
-  # everyone_not_home: everyone_not_home
-  # everyone_home: everyone_home
-  # somebody_is_home: somebody_is_home
-  depart_check_time: 90
-  depart_scans: 3
-  minimum_confidence: 60
-  not_home_timeout: 15
-  system_check: 300
-  system_timeout: 400
-  home_gateway_sensors:
-    - binary_sensor.motion_sensor_2_garage_occupancy
-    - binary_sensor.motion_sensor_3_garage_occupancy
+ups_shutdown:
+  module: ups_shutdown
+  class: UPSShutdown
 
-  log_level: INFO
+  # ── thresholds ──────────────────────────────────────────────────────────
+  battery_low: 20          # % — sensor.myups_battery_charge
+  runtime_low: 5           # minutes — sensor.ups_estimated_runtime
+  pre_delay:   120         # seconds grace before shutdown starts (abort window)
 
-  #reboot nodes at 12 midnight
-  # scheduled_restart:
-  #   time: '00:00:09'
-  #   days:
-  #     - mon
-  #     - tue
-  #     - wed
-  #     - thu
-  #     - fri
-  #     - sat
-  #     - sun
-  #   location: 
-  #     - upstairs
+  # ── SSH timeouts ─────────────────────────────────────────────────────────
+  ssh_timeout:   30        # seconds — TCP connect timeout per SSH attempt
+  drain_timeout: 120       # seconds — kubectl drain --timeout per node
 
-  # other location configuration options.
-    
-  location:
-    - ground_floor
-    # - upstairs
-    - roof
+  # ── Jump host ────────────────────────────────────────────────────────────
+  # Workers and Proxmox hosts accept direct password SSH from intel_sbc.
+  # Ubuntu master VMs only trust cluster SSH keys (generated on the OrangePi nodes).
+  # Solution: SSH to orangepi5b first; it forwards onward using its own local key.
+  jump_host:
+    ip:   "10.0.50.39"    # orangepi5b — has cluster keys trusted by ubuntu masters
+    user: root
+    pass: "david"
 
-  home_motion_sensors: None
+  # Master where kubectl is run (reached via the jump host above)
+  kubectl_ip:   "10.0.50.102"   # ubuntu100
+  kubectl_user: "root"
 
-  known_devices:
-    - 28:EA:2D:C2:F8:0F davidbluetooth
-    - D8:1C:79:B4:C1:E3 wendybluetooth
+  # ── k3s nodes ─────────────────────────────────────────────────────────────
+  # Workers: direct password SSH.
+  # Masters: no direct SSH — pve_host tells the app which Proxmox API to call for shutdown.
+  # Order matters: workers first, then masters (last master in list is not drained).
+  k3s_nodes:
+    - node_name: orangepi5b
+      ip:        "10.0.50.39"
+      user:      root
+      pass:      "david"
+      role:      worker
 
-  known_beacons:
-    - 28:EA:2D:C2:F8:0F davidbluebeacon
-    - D8:1C:79:B4:C1:E3 wendybluebeacon
+    - node_name: orangepi5b1
+      ip:        "10.0.50.49"
+      user:      root
+      pass:      "david"
+      role:      worker
 
-  remote_monitors:
-    disable: False 
-    ground_floor:
-      host: 10.0.0.38
-      auto_reboot_when_offline: True
-      username:  !secret ground_floor_monitor_username
-      password:  !secret ground_floor_monitor_password
+    - node_name: ubuntu100
+      pve_host:  "10.0.50.19"   # Proxmox host that owns this VM
+      role:      master
 
-    roof:
-      host: 10.0.0.14
-      username:  !secret roof_monitor_username
-      password:  !secret roof_monitor_password      
-      auto_reboot_when_offline: True      
+    - node_name: ubuntu200
+      pve_host:  "10.0.50.26"
+      role:      master
 
-    # upstairs:
-    #   host: 10.0.0.11
-    #   username:  !secret upstairs_monitor_username
-    #   password:  !secret upstairs_monitor_password
-    #   reboot_command: sudo reboot
-    #   auto_reboot_when_offline: False
-    #   time: '11:43:00'  
+    - node_name: ubuntu300
+      pve_host:  "10.0.50.40"   # adjust if ubuntu300 lives on a different pve host
+      role:      master
+
+  # ── Proxmox API (for master VM ACPI shutdown) ────────────────────────────
+  proxmox_api_user: "root@pam"
+  proxmox_api_pass: "david"
+
+  # ── Proxmox hosts (shut down after all VMs are off) ──────────────────────
+  # pve3 (10.0.50.39) and pve5 (10.0.50.49) are the OrangePi workers — already
+  # halted above as k3s_nodes, so not listed here.
+  proxmox_hosts:
+    - ip:   "10.0.50.19"
+      user: root
+      pass: "david"
+    - ip:   "10.0.50.26"
+      user: root
+      pass: "david"
+    - ip:   "10.0.50.40"
+      user: root
+      pass: "david"
+
+  # ── intel_sbc (runs HAOS VM + Proxmox) ──────────────────────────────────
+  # Sequence: schedule host OS shutdown (+5 min) → ACPI shutdown HAOS VM →
+  #           NAS API shutdown → AppDaemon killed when HAOS VM stops →
+  #           host powers off at +5 min mark.
+  intel_ip:   "10.0.0.71"
+  intel_user: root
+  intel_pass: "david23031955"
+
+  # HAOS VM ID on the intel_sbc Proxmox host (AppDaemon runs inside this VM).
+  # Verify in Proxmox web UI — typically VM 100 on a fresh HAOS install.
+  haos_vmid: 100
+
+  # ── Synology NAS ──────────────────────────────────────────────────────────
+  # Shut down after intel_sbc shutdown is scheduled but while AppDaemon is
+  # still running.  NAS takes ~2-3 min to power off, by which time intel_sbc
+  # has already gone down.  This ensures the NAS is accessible throughout
+  # the intel_sbc shutdown process.
+  nas_ip:   "10.0.50.35"
+  nas_user: "davidb"
+  nas_pass: "AJT5gaf0hua-mkb7euy"

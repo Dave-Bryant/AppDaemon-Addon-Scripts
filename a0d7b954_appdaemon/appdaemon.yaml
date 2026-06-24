@@ -6,27 +6,29 @@ appdaemon:
   latitude: -35.282
   longitude: 149.1287
   elevation: 571
-  time_zone: Australia/Sydney  
+  time_zone: Australia/Sydney
   plugins:
     HASS:
-      type: hass 
+      type: hass
       # persist_entities: True
+
+      token: !env_var SUPERVISOR_TOKEN
     MQTT:
-       type: mqtt
-       namespace: mqtt
-       persist_entities: True
-       client_host: 10.0.0.55
-       client_user: AppDaemon_Monitor
-       client_password: david230355
-       client_topics:
-           - NONE     #this is new 
+      type: mqtt
+      namespace: mqtt
+      persist_entities: True
+      client_host: 10.0.0.55
+      client_user: AppDaemon_Monitor
+      client_password: david230355
+      client_topics:
+        - NONE #this is new 
 http:
-  url: http://125.0.0.1:5050
+  url: http://0.0.0.0:5050
 admin:
 api:
 hadashboard:
 # secrets: /addon_configs/a0d7b954_appdaemon/secrets.yaml
 secrets: /homeassistant/secrets.yaml
-logs:  
-  main_log:    
+logs:
+  main_log:
     log_size: 2048
