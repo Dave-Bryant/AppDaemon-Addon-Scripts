@@ -12,7 +12,7 @@ _lawn_defaults: &lawn_defaults
   PRECIPITATION_THRESHOLD_48: 90
   WATERING_THRESHOLD: 360
   NO_OF_SCHEDULES: 4
-  SOILMOISTUREMIN: 75
+  SOILMOISTUREMIN: 50
   RAINTHRESHOLD: 2  
   STATION_1: 'switch.opensprinkler_1_front_lawn_station_enabled'  #Front Lawn West Irrigation
   STATION_2: 'switch.opensprinkler_2_front_lawn_left_station_enabled'  #Front Lawn East Irrigation
@@ -71,7 +71,7 @@ irrigationG:              # Gardens
   PRECIPITATION_THRESHOLD_48: 90
   WATERING_THRESHOLD: 360
   NO_OF_SCHEDULES: 1
-  SOILMOISTUREMIN: 75
+  SOILMOISTUREMIN: 50
   RAINTHRESHOLD: 2
   RESET_BUCKET: False
   GARDEN_RUN: True 
@@ -91,7 +91,7 @@ irrigationG:              # Gardens
   # Clay typically needs 3-6L/m² to wet the soil to root depth for established plants 2–3 times per week. Given the Gardens deliver 6 L/m²/hour this would be 1 hour at 3 times a week at the top of the range. This is equivalent in lawn watering time over three days of 150m (EV of 10 mm/day or 50m/day). The conversion factor from Lawn Watering to Garden Watering is therefore 60m/150m = .4 
   # Wrong Logic not sure why: The Garden calculations use the Lawn Watering time (for 338 sq metres) and pro rata it down (for Gardens of 195 sq metres) using a factor of 60%. Given the L/m2/hour for the lawn is three times the garden rate the final conversion factor is Lawn Watering Time * 0.6 * 3 = Garden Watering Time. So the weight of 1.8 is used for Station 6 and 7 using this conversion.     
   STATION_6_WEIGHT: 0.4  # 75 metres of drip line with 1 hole every 300 mm delivering 30ml per minute i.e. 75 / .3 * 30 = 7.5 litres per minute or .1 Litre per metre per minute. Based on typical bed of 1m wide this is 6 L/m²/hour. 
-  STATION_7_WEIGHT: 0.4  # 120 metres of drip line with 1 hole every 300 mm delivering 30ml per minute i.e. 120 / .3 * 30 = 12 litres per minute or .1 Litre per metre per minute. Based on typical bed of 1m wide this is 6 L/m²/hour.
+  STATION_7_WEIGHT: 0.6  # 120 metres of drip line with 1 hole every 300 mm delivering 30ml per minute i.e. 120 / .3 * 30 = 12 litres per minute or .1 Litre per metre per minute. Based on typical bed of 1m wide this is 6 L/m²/hour. 25/9 added .2 dues to trees at the back
   
 
 irrigation_rain_monitor:              # Resets cumulative garden run time if rain occurs
@@ -126,13 +126,10 @@ irrigation_ET_calculator:              # Calculates ET & Run time daily howzat
   SPRINKLERMAXRUNTIME: 3600 # secs i.e. 60 mins
   DAILYRAIN: "sensor.ws2900c_v2_01_10_daily_rain"
   EVENTRAIN: "sensor.ws2900c_v2_01_10_event_rain"
-  # InfluxDB connection
-  INFLUXDB_HOST: "10.0.0.55"
-  INFLUXDB_PORT: 8086
-  INFLUXDB_USER: "homeassistant"
-  INFLUXDB_PASSWORD: "david"
-  INFLUXDB_DATABASE: "homeassistant"
-  # Weather station InfluxDB entity_id tags
+  # VictoriaMetrics connection (replaced the InfluxDB add-on)
+  VICTORIAMETRICS_HOST: "a0d7b954-victoriametrics"
+  VICTORIAMETRICS_PORT: 8428
+  # Weather station entity_id tags
   TAG_TEMPERATURE: "ws2900c_v2_01_10_outdoor_temperature"
   TAG_HUMIDITY: "ws2900c_v2_01_10_humidity"
   TAG_PRESSURE: "ws2900c_v2_01_10_absolute_pressure"
@@ -195,16 +192,20 @@ ups_shutdown:
   drain_timeout: 120       # seconds — kubectl drain --timeout per node
 
   # ── Jump host ────────────────────────────────────────────────────────────
-  # Workers and Proxmox hosts accept direct password SSH from intel_sbc.
+  # Proxmox hosts still accept direct password SSH from intel_sbc.
+  # orangepi5b/5b1 no longer do (harden_ssh.yml disabled PasswordAuthentication
+  # on the node group) — key_path below is a dedicated key generated for this
+  # script and added to root's authorized_keys on both OrangePi hosts.
   # Ubuntu master VMs only trust cluster SSH keys (generated on the OrangePi nodes).
   # Solution: SSH to orangepi5b first; it forwards onward using its own local key.
   jump_host:
     ip:   "10.0.50.39"    # orangepi5b — has cluster keys trusted by ubuntu masters
     user: root
     pass: "david"
+    key_path: "appdaemon_shutdown_key"
 
   # Master where kubectl is run (reached via the jump host above)
-  kubectl_ip:   "10.0.50.102"   # ubuntu100
+  kubectl_ip:   "10.0.50.110"   # ubuntu-cp1
   kubectl_user: "root"
 
   # ── k3s nodes ─────────────────────────────────────────────────────────────
@@ -216,29 +217,34 @@ ups_shutdown:
       ip:        "10.0.50.39"
       user:      root
       pass:      "david"
+      key_path:  "appdaemon_shutdown_key"
       role:      worker
 
     - node_name: orangepi5b1
       ip:        "10.0.50.49"
       user:      root
       pass:      "david"
+      key_path:  "appdaemon_shutdown_key"
       role:      worker
 
-    - node_name: ubuntu100
-      pve_host:  "10.0.50.19"   # Proxmox host that owns this VM
+    - node_name: ubuntu-cp1
+      pve_host:  "10.0.0.71"   # intel_sbc — VM 301
       role:      master
 
-    - node_name: ubuntu200
-      pve_host:  "10.0.50.26"
+    - node_name: ubuntu-cp2
+      pve_host:  "10.0.0.71"   # intel_sbc — VM 302
       role:      master
 
-    - node_name: ubuntu300
-      pve_host:  "10.0.50.40"   # adjust if ubuntu300 lives on a different pve host
+    - node_name: ubuntu-cp3
+      pve_host:  "10.0.0.71"   # intel_sbc — VM 303
       role:      master
 
   # ── Proxmox API (for master VM ACPI shutdown) ────────────────────────────
+  # All 3 masters now live on intel_sbc (VMs 301-303), which has a different
+  # root password than the rpi1/rpi2/rpi3 cluster — confirmed via a live
+  # /access/ticket auth test (the old "david" password fails against it).
   proxmox_api_user: "root@pam"
-  proxmox_api_pass: "david"
+  proxmox_api_pass: "david23031955"
 
   # ── Proxmox hosts (shut down after all VMs are off) ──────────────────────
   # pve3 (10.0.50.39) and pve5 (10.0.50.49) are the OrangePi workers — already
@@ -263,8 +269,11 @@ ups_shutdown:
   intel_pass: "david23031955"
 
   # HAOS VM ID on the intel_sbc Proxmox host (AppDaemon runs inside this VM).
-  # Verify in Proxmox web UI — typically VM 100 on a fresh HAOS install.
-  haos_vmid: 100
+  # Confirmed directly via `qm list` on intel_sbc: VMID 200 is "homeassistant".
+  # (VMID 100 is a different, unrelated VM named "minio" -- the shutdown test
+  # was silently passing against the wrong VM before this fix, since it only
+  # checks that a VM exists at the configured ID, not that its name matches.)
+  haos_vmid: 200
 
   # ── Synology NAS ──────────────────────────────────────────────────────────
   # Shut down after intel_sbc shutdown is scheduled but while AppDaemon is

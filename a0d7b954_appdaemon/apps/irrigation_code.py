@@ -49,8 +49,8 @@ class Home_Irrigation(hass.Hass):
         return stations
 
     def _load_sensors(self):
-        if (self.get_state("sensor.high_temperature_today") == 0
-                or self.get_state("sensor.precip_chance_today") == "unknown"):
+        if (self.to_float(self.get_state("sensor.high_temperature_today")) == 0.0
+                or self.get_state("sensor.precip_chance_today") in (None, "unknown", "unavailable")):
             self.running_time = 0.0
             self.chance_of_precipitation = 100.0
             self.chance_of_precipitation_48hrs = 100.0
@@ -116,24 +116,27 @@ class Home_Irrigation(hass.Hass):
             f"All conditions must be OK to irrigate."
         )
 
+        # Lower-priority statuses are set first so higher-priority ones overwrite them
+        # (select_option keeps only the last value written). Priority, highest first:
+        # It has rained > Rain is coming > Soil moisture too high > Irrigation run time too small.
         if self.running_time <= self.watering_threshold:
             status = "No moisture lost yesterday" if int(self.running_time) == 0 else "Irrigation run time too small"
             self.select_option("input_select.irrigation_status", status)
+        if self.soil_moisture > self.soil_moisture_min:
+            self.select_option("input_select.irrigation_status", "Soil Moisture too high")
         if self.chance_of_precipitation > self.precipitation_threshold:
             self.select_option("input_select.irrigation_status", "Rain is coming")
         if self.chance_of_precipitation_48hrs > self.precipitation_threshold_48:
             self.select_option("input_select.irrigation_status", "Rain is coming")
         if self.precipitation > self.rain_threshold:
             self.select_option("input_select.irrigation_status", "It has rained")
-        if self.soil_moisture > self.soil_moisture_min:
-            self.select_option("input_select.irrigation_status", "Soil Moisture too high")
 
         should_irrigate = (
             self.running_time > self.watering_threshold
+            and self.soil_moisture <= self.soil_moisture_min
             and self.chance_of_precipitation <= self.precipitation_threshold
             and self.chance_of_precipitation_48hrs <= self.precipitation_threshold_48
             and self.precipitation <= self.rain_threshold
-            and self.soil_moisture <= self.soil_moisture_min
         )
 
         if self.debug:
@@ -178,11 +181,8 @@ class Home_Irrigation(hass.Hass):
 
         if self.precipitation > 0:
             self.log("Skipping irrigation — it is currently raining")
+            self.select_option("input_select.irrigation_status", "It has rained")
             return
-
-        for key, data in self.stations.items():
-            if not key.startswith('noswitch'):
-                self.set_textvalue(f"input_text.{key[7:]}_run_duration", str(round(data['station_running_time'])))        
 
         switch_state = self.get_state("input_boolean.auto_irrigation_switch")
         if switch_state is None:
@@ -191,6 +191,10 @@ class Home_Irrigation(hass.Hass):
         if switch_state != 'on':
             self.log("Auto irrigation switch is off — not starting")
             return
+
+        for key, data in self.stations.items():
+            if not key.startswith('noswitch'):
+                self.set_textvalue(f"input_text.{key[7:]}_run_duration", str(round(data['station_running_time'])))
 
         now = datetime.datetime.today()
         delay = 0
@@ -224,7 +228,8 @@ class Home_Irrigation(hass.Hass):
                 ):
                     state = self.get_state(entity)
                     #self.log(f"Init entity: {entity} = {state!r}")
-                    if state in (None, "unknown", "unavailable", ""):
+                    # "—" is the legacy placeholder from the old code version
+                    if state in (None, "unknown", "unavailable", "", "—"):
                         self.set_textvalue(entity, "----")
 
     def _queue_station_cb(self, kwargs):

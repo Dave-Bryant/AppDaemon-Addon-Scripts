@@ -21,6 +21,7 @@ Configuration lives in apps.yaml.
 python_packages required in AppDaemon addon config: paramiko, requests
 """
 
+import os
 import threading
 import time
 
@@ -30,6 +31,7 @@ import urllib3
 import appdaemon.plugins.hass.hassapi as hass
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 class UPSShutdown(hass.Hass):
 
@@ -151,17 +153,30 @@ class UPSShutdown(hass.Hass):
 
     # ── SSH helpers ─────────────────────────────────────────────────────────
 
-    def _ssh_connect(self, ip, user, password):
+    def _resolve_key(self, key_path):
+        """A bare filename is resolved relative to this script's own directory
+        (the apps/ folder), since the container-internal path to that folder
+        varies by add-on and isn't worth hardcoding. Already-absolute paths
+        pass through unchanged."""
+        if key_path and not os.path.isabs(key_path):
+            return os.path.join(os.path.dirname(os.path.abspath(__file__)), key_path)
+        return key_path
+
+    def _ssh_connect(self, ip, user, password, key_path=None):
         c = paramiko.SSHClient()
         c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        c.connect(ip, username=user, password=password,
-                  timeout=self.ssh_timeout, look_for_keys=False, allow_agent=False)
+        if key_path:
+            c.connect(ip, username=user, key_filename=self._resolve_key(key_path),
+                      timeout=self.ssh_timeout, look_for_keys=False, allow_agent=False)
+        else:
+            c.connect(ip, username=user, password=password,
+                      timeout=self.ssh_timeout, look_for_keys=False, allow_agent=False)
         return c
 
-    def _ssh_run(self, ip, user, password, cmd, timeout=60):
-        """Execute cmd via password SSH. Returns (rc, stdout, stderr)."""
+    def _ssh_run(self, ip, user, password, cmd, timeout=60, key_path=None):
+        """Execute cmd via SSH (key auth if key_path given, else password). Returns (rc, stdout, stderr)."""
         try:
-            c = self._ssh_connect(ip, user, password)
+            c = self._ssh_connect(ip, user, password, key_path=key_path)
             _, stdout, stderr = c.exec_command(cmd, timeout=timeout)
             out = stdout.read().decode().strip()
             err = stderr.read().decode().strip()
@@ -172,13 +187,13 @@ class UPSShutdown(hass.Hass):
             return -1, "", str(exc)
 
     def _ssh_via_jump(self, jump_ip, jump_user, jump_pass,
-                      target_ip, target_user, cmd, timeout=60):
+                      target_ip, target_user, cmd, timeout=60, key_path=None):
         """Run cmd on target_ip via a nested SSH from the jump host."""
         wrapped = (
             f"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "
             f"{target_user}@{target_ip} '{cmd}'"
         )
-        return self._ssh_run(jump_ip, jump_user, jump_pass, wrapped, timeout=timeout + 15)
+        return self._ssh_run(jump_ip, jump_user, jump_pass, wrapped, timeout=timeout + 15, key_path=key_path)
 
     # ── Proxmox API helpers ──────────────────────────────────────────────────
 
@@ -353,6 +368,7 @@ class UPSShutdown(hass.Hass):
         rc, out, err = self._ssh_via_jump(
             jump["ip"], jump["user"], jump["pass"],
             k_ip, k_user, cmd, timeout=self.drain_timeout,
+            key_path=jump.get("key_path"),
         )
         if rc == 0:
             self.log("Node %s drained", node_name)
@@ -406,6 +422,7 @@ class UPSShutdown(hass.Hass):
         self.log("[1/7] Jump host SSH  %s@%s", jump["user"], jump["ip"])
         rc, out, err = self._ssh_run(
             jump["ip"], jump["user"], jump["pass"], "hostname && uptime",
+            key_path=jump.get("key_path"),
         )
         if rc == 0:
             ok(f"jump {jump['ip']}", out.replace("\n", " | "))
@@ -417,6 +434,7 @@ class UPSShutdown(hass.Hass):
         rc, out, err = self._ssh_via_jump(
             jump["ip"], jump["user"], jump["pass"],
             k_ip, k_user, "kubectl get nodes -o wide --no-headers",
+            key_path=jump.get("key_path"),
         )
         if rc == 0:
             for line in out.splitlines():
@@ -430,6 +448,7 @@ class UPSShutdown(hass.Hass):
         for n in workers:
             rc, out, err = self._ssh_run(
                 n["ip"], n["user"], n["pass"], "hostname && uptime",
+                key_path=n.get("key_path"),
             )
             if rc == 0:
                 ok(f"worker {n['node_name']} ({n['ip']})", out.replace("\n", " | "))
@@ -556,7 +575,8 @@ class UPSShutdown(hass.Hass):
         self.log("Step 3/6 — halting worker nodes")
         for n in workers:
             self.log("Halting worker %s (%s)", n["node_name"], n["ip"])
-            self._ssh_run(n["ip"], n["user"], n["pass"], "sudo shutdown -h now")
+            self._ssh_run(n["ip"], n["user"], n["pass"], "sudo shutdown -h now",
+                          key_path=n.get("key_path"))
         time.sleep(20)
 
         # ── 4. Halt masters via Proxmox API ──────────────────────────────
